@@ -13,6 +13,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,400;0,500;0,600;0,700;0,800;1,600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="css/design.css">
 </head>
 <body>
   <div id="auth-screen" class="auth-screen hidden">
@@ -48,7 +49,7 @@
   <div id="app" class="main-app">
     <header class="header header-brand">
       <div class="header-brand-row">
-        <h1 class="header-title">Рубликс</h1>
+        <h1 class="header-title"><span class="brand-mark" aria-hidden="true">₽</span>Рубликс</h1>
         <button type="button" class="btn-help" id="btnHeaderHelp" aria-label="О приложении" title="О приложении">?</button>
       </div>
       <p class="header-quotes-meta" id="quotesRefreshLabel" aria-live="polite"></p>
@@ -56,7 +57,7 @@
 
     <main class="main">
       <div id="screen-home" class="screen active">
-        <p class="home-tagline home-tagline-compact">РУБЛИКС — опыт без потерь</p>
+        <div class="home-intro"><p class="home-eyebrow">Твоя практика инвестиций</p><h2>Опыт без потерь.</h2><p>Пробуй, ошибайся и разбирайся в рынке. <br>Здесь все деньги — учебные.</p></div>
         <div class="home-subtabs" role="tablist">
           <button type="button" class="home-subtab active" id="homeSubMain" role="tab" aria-selected="true">Главная</button>
           <button type="button" class="home-subtab" id="homeSubFav" role="tab" aria-selected="false">Избранное</button>
@@ -72,21 +73,11 @@
           <div class="home-fav-list" id="homeFavoritesList"></div>
         </div>
         <div id="homeMainPanels">
-          <section class="home-stories-section" aria-label="Сторис">
-            <div class="home-stories-scroll" id="homeStoriesStrip"></div>
-          </section>
-          <section class="news-section news-section-first">
-            <div class="section-row">
-              <h2 class="section-title">Сейчас важно</h2>
-              <a href="#" class="link-all" id="linkAllNews">Все материалы</a>
-            </div>
-            <div class="news-scroll" id="newsCarousel"></div>
-          </section>
           <section class="hero-portfolio-section">
             <div class="hero-portfolio-card">
               <div class="hero-portfolio-top">
                 <div>
-                  <span class="hero-portfolio-label">Оценка портфеля</span>
+                  <span class="hero-portfolio-label">Мой портфель</span>
                   <button type="button" class="portfolio-chip" id="portfolioAccountChip" title="Счета демо-портфеля"><span id="portfolioChipLabel">Основной счёт</span></button>
                 </div>
                 <span class="hero-cash-note">Деньги на счёте: <strong id="balanceAmount">—</strong> ₽</span>
@@ -108,39 +99,22 @@
                 </button>
                 <button type="button" class="qa-circle" id="btnHomeEarn" aria-label="Заработок рубликсов и обучение" title="Квесты, уроки и рубликсы">
                   <span class="qa-svg qa-earn" aria-hidden="true"></span>
-                  <span class="qa-label">Заработок</span>
+                  <span class="qa-label">Учиться</span>
                 </button>
               </div>
               <p class="instrument-chips-label">Инструменты</p>
               <div class="instrument-chips" role="group" aria-label="Тип инструмента">
                 <button type="button" class="inst-chip active" data-inst="stocks">Акции</button>
-                <button type="button" class="inst-chip" data-inst="bonds">Облигации</button>
-                <button type="button" class="inst-chip" data-inst="metals">Металлы</button>
-                <button type="button" class="inst-chip" data-inst="fut">Фьючерсы</button>
+                <button type="button" class="inst-chip" data-inst="bonds" disabled title="Скоро">Облигации · скоро</button>
+                <button type="button" class="inst-chip" data-inst="metals" disabled title="Скоро">Металлы · скоро</button>
+                <button type="button" class="inst-chip" data-inst="fut" disabled title="Скоро">Фьючерсы · скоро</button>
               </div>
             </div>
           </section>
           <section class="home-top-section">
-            <h2 class="section-title">Кто сегодня зажигает на бирже?</h2>
-            <p class="section-subtitle" id="homeMoversSortHint">У кого больше всего менялась цена за день?</p>
+            <h2 class="section-title">В движении</h2>
+            <p class="section-subtitle" id="homeMoversSortHint">Акции с заметным изменением цены за день</p>
             <div class="top-movers" id="homeTopMovers"></div>
-          </section>
-          <section class="home-shortcuts">
-            <a href="#" class="shortcut-card" id="linkShortcutEdu">
-              <span class="shortcut-icon shortcut-svg-edu" aria-hidden="true"></span>
-              <div><strong>Обучение и миссии</strong><p>Уроки, квесты, рубликсы</p></div>
-              <span class="chevron">›</span>
-            </a>
-            <a href="#" class="shortcut-card" id="linkShortcutGames">
-              <span class="shortcut-icon shortcut-svg-game" aria-hidden="true"></span>
-              <div><strong>Мини-игры</strong><p>Викторина и челленджи</p></div>
-              <span class="chevron">›</span>
-            </a>
-            <a href="#" class="shortcut-card" id="linkParentReport">
-              <span class="shortcut-icon shortcut-svg-family" aria-hidden="true"></span>
-              <div><strong>Отчёт родителю</strong><p>Поделиться прогрессом</p></div>
-              <span class="chevron">›</span>
-            </a>
           </section>
           <section class="stocks-section">
             <div class="section-row section-row--stocks">
@@ -152,8 +126,35 @@
             </div>
             <div class="stocks-scroll" id="stocksList"></div>
           </section>
+          <section class="home-stories-section" aria-label="Сторис">
+            <div class="home-stories-scroll" id="homeStoriesStrip"></div>
+          </section>
+          <section class="news-section news-section-first">
+            <div class="section-row">
+              <h2 class="section-title">Сейчас важно</h2>
+              <a href="#" class="link-all" id="linkAllNews">Все материалы</a>
+            </div>
+            <div class="news-scroll" id="newsCarousel"></div>
+          </section>
+          <section class="home-shortcuts">
+            <a href="#" class="shortcut-card" id="linkShortcutEdu">
+              <span class="shortcut-icon shortcut-svg-edu" aria-hidden="true"></span>
+              <div><strong>Разобраться в рынке</strong><p>Короткие уроки и понятные примеры</p></div>
+              <span class="chevron">›</span>
+            </a>
+            <a href="#" class="shortcut-card" id="linkShortcutGames">
+              <span class="shortcut-icon shortcut-svg-game" aria-hidden="true"></span>
+              <div><strong>Проверить себя</strong><p>Финансовые игры на пару минут</p></div>
+              <span class="chevron">›</span>
+            </a>
+            <a href="#" class="shortcut-card" id="linkParentReport">
+              <span class="shortcut-icon shortcut-svg-family" aria-hidden="true"></span>
+              <div><strong>Отчёт родителю</strong><p>Поделиться прогрессом</p></div>
+              <span class="chevron">›</span>
+            </a>
+          </section>
           <section class="topics-section">
-            <h2 class="section-title">Темы</h2>
+            <h2 class="section-title">Разбираем по темам</h2>
             <div class="topics-grid" id="topicsGrid"></div>
           </section>
           <section class="holdings-section" id="holdingsSection">
@@ -352,7 +353,7 @@
             </div>
             <div class="issuer-media-hint">
               <span class="issuer-media-label">Видео и материалы эмитента</span>
-              <button type="button" class="btn-text btn-issuer-placeholder" id="btnIssuerMedia">Скоро</button>
+              <button type="button" class="btn-text btn-issuer-placeholder" id="btnIssuerMedia" disabled>Скоро</button>
             </div>
           </div>
         </div>

@@ -832,7 +832,7 @@ function renderHome() {
   if (newsEl) {
     if (articles.length) {
       newsEl.innerHTML = articles.slice(0, 4).map(function (a) {
-        return '<article class="news-card" data-article-id="' + escapeHtml(a.id) + '"><h3>' + escapeHtml(a.title) + '</h3><p>' + escapeHtml(a.subtitle || '') + '</p><span class="link-all">Подробнее →</span></article>';
+        return '<a href="#" class="news-card" data-article-id="' + escapeHtml(a.id) + '"><h3>' + escapeHtml(a.title) + '</h3><p>' + escapeHtml(a.subtitle || '') + '</p><span class="link-all">Читать материал →</span></a>';
       }).join('');
     } else {
       newsEl.innerHTML = (DATA.news || []).map(function (n) {
@@ -858,7 +858,7 @@ function renderHome() {
   var topicsEl = document.getElementById('topicsGrid');
   if (topicsEl) {
     topicsEl.innerHTML = DATA.topics.map(function (t) {
-      return '<a href="#" class="topic-card" data-id="' + escapeHtml(t.id) + '" style="background:' + t.color + '"><h3>' + escapeHtml(t.title) + '</h3><p>' + escapeHtml(t.description) + '</p></a>';
+      return '<a href="#" class="topic-card" data-id="' + escapeHtml(t.id) + '" style="--topic-color:' + t.color + '"><h3>' + escapeHtml(t.title) + '</h3><p>' + escapeHtml(t.description) + '</p></a>';
     }).join('');
   }
 
@@ -936,7 +936,7 @@ function updateQuotesRefreshLabel() {
   if (!el) return;
   var d = new Date();
   const demo = stocks.some(function (s) { return s.mock; });
-  el.textContent = (demo ? 'Учебные котировки · ' : 'MOEX · ') + d.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  el.textContent = (demo ? 'Демо-котировки · ' : 'MOEX · ') + d.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
 }
 
 function stopStocksPolling() {

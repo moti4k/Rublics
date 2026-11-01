@@ -212,3 +212,12 @@ test('entrance test and runner start and exit', async ({ page }) => {
   await expect(page.locator('#screen-game')).toBeVisible();
   expect(await page.evaluate(() => runnerEngine.spawnTimer)).toBeNull();
 });
+
+test('flat colors and explicitly unavailable features', async ({ page }) => {
+  await enter(page);
+  const backgrounds = await page.locator('body, .news-card, .home-story-card, .btn-primary').evaluateAll(elements => elements.map(el => getComputedStyle(el).backgroundImage));
+  expect(backgrounds.every(bg => !bg.includes('gradient'))).toBe(true);
+  await expect(page.locator('[data-inst="bonds"]')).toBeDisabled();
+  await page.locator('[data-tab="game"]').click();
+  await expect(page.locator('.game-hub-title')).toHaveCSS('color', 'rgb(23, 29, 43)');
+});
