@@ -1,0 +1,24 @@
+{
+  "name": "rubliks",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Учебный симулятор инвестиций Рубликс",
+  "scripts": {
+    "start": "node server/server.js",
+    "test": "playwright test",
+    "check": "node --check web/js/app.js && node --check web/js/data.js && node --check web/js/api.js && node --check server/server.js"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "workspaces": [
+    "server"
+  ],
+  "devDependencies": {
+    "@playwright/test": "^1.56.0",
+    "lightweight-charts": "4.1.0"
+  },
+  "overrides": {
+    "qs": "^6.16.1"
+  }
+}

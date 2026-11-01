@@ -1,0 +1,25 @@
+node_modules/
+build/
+DerivedData/
+*.db
+*.db-*
+*.sqlite*
+.DS_Store
+._*
+__MACOSX/
+xcuserdata/
+*.xcuserstate
+.env
+.env.*
+!.env.example
+*.log
+.playwright-cli/
+test-results/
+playwright-report/
+*.zip
+*.mov
+.cursor/
+/*.docx
+/*.xlsx
+/*.pdf
+/New data/

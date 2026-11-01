@@ -1,0 +1,629 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 56;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		A100000000000000000001 /* RubliksApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = B100000000000000000001 /* RubliksApp.swift */; };
+		A100000000000000000002 /* RootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B100000000000000000002 /* RootView.swift */; };
+		A100000000000000000003 /* AppTheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = B100000000000000000003 /* AppTheme.swift */; };
+		A100000000000000000004 /* AppState.swift in Sources */ = {isa = PBXBuildFile; fileRef = B100000000000000000004 /* AppState.swift */; };
+		A100000000000000000005 /* SplashView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B100000000000000000005 /* SplashView.swift */; };
+		A100000000000000000006 /* OnboardingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B100000000000000000006 /* OnboardingView.swift */; };
+		A100000000000000000007 /* AuthView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B100000000000000000007 /* AuthView.swift */; };
+		A100000000000000000008 /* CharacterCreationView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B100000000000000000008 /* CharacterCreationView.swift */; };
+		A100000000000000000009 /* MainTabView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B100000000000000000009 /* MainTabView.swift */; };
+		A10000000000000000000A /* HomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000A /* HomeView.swift */; };
+		A10000000000000000000B /* TopicDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000B /* TopicDetailView.swift */; };
+		A10000000000000000000C /* ChartView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000C /* ChartView.swift */; };
+		A10000000000000000000D /* GameView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000D /* GameView.swift */; };
+		A10000000000000000000E /* EducationView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000E /* EducationView.swift */; };
+		A10000000000000000000F /* ProfileView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000F /* ProfileView.swift */; };
+		A100000000000000000010 /* NewsItem.swift in Sources */ = {isa = PBXBuildFile; fileRef = B100000000000000000010 /* NewsItem.swift */; };
+		A100000000000000000011 /* TopicCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = B100000000000000000011 /* TopicCard.swift */; };
+		A100000000000000000012 /* CandleData.swift in Sources */ = {isa = PBXBuildFile; fileRef = B100000000000000000012 /* CandleData.swift */; };
+		A100000000000000000013 /* QuizItem.swift in Sources */ = {isa = PBXBuildFile; fileRef = B100000000000000000013 /* QuizItem.swift */; };
+		A100000000000000000014 /* MoexMockService.swift in Sources */ = {isa = PBXBuildFile; fileRef = B100000000000000000014 /* MoexMockService.swift */; };
+		A100000000000000000015 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = B100000000000000000015 /* Assets.xcassets */; };
+		A100000000000000000016 /* CharacterAvatarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B100000000000000000016 /* CharacterAvatarView.swift */; };
+		A10000000000000000001C /* CharacterEditorSheetView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000001C /* CharacterEditorSheetView.swift */; };
+		A100000000000000000017 /* StocksListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B100000000000000000017 /* StocksListView.swift */; };
+		A100000000000000000018 /* CharacterAppearance.swift in Sources */ = {isa = PBXBuildFile; fileRef = B100000000000000000018 /* CharacterAppearance.swift */; };
+		A100000000000000000019 /* StockItem.swift in Sources */ = {isa = PBXBuildFile; fileRef = B100000000000000000019 /* StockItem.swift */; };
+		A10000000000000000001A /* SubscriptionPlan.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000001A /* SubscriptionPlan.swift */; };
+		A10000000000000000001B /* UserProfile.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000001B /* UserProfile.swift */; };
+		A10000000000000000001D /* GameTabView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000001D /* GameTabView.swift */; };
+		A10000000000000000001E /* CatchTrendGameView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000001E /* CatchTrendGameView.swift */; };
+		A10000000000000000001F /* BuySellGameView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000001F /* BuySellGameView.swift */; };
+		A100000000000000000020 /* FinancialChoiceGameView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B100000000000000000020 /* FinancialChoiceGameView.swift */; };
+		A100000000000000000021 /* Portfolio.swift in Sources */ = {isa = PBXBuildFile; fileRef = B100000000000000000021 /* Portfolio.swift */; };
+		A100000000000000000022 /* PurchaseView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B100000000000000000022 /* PurchaseView.swift */; };
+		A100000000000000000023 /* RunnerInvestorGameView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B100000000000000000023 /* RunnerInvestorGameView.swift */; };
+		A100000000000000000024 /* SellView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B100000000000000000024 /* SellView.swift */; };
+		A100000000000000000025 /* HelpTourView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B100000000000000000025 /* HelpTourView.swift */; };
+		A100000000000000000026 /* FriendsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B100000000000000000026 /* FriendsView.swift */; };
+		A100000000000000000027 /* FriendStats.swift in Sources */ = {isa = PBXBuildFile; fileRef = B100000000000000000027 /* FriendStats.swift */; };
+		A100000000000000000028 /* MoexIssApi.swift in Sources */ = {isa = PBXBuildFile; fileRef = B100000000000000000028 /* MoexIssApi.swift */; };
+		A100000000000000000029 /* RugPullGameView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B100000000000000000029 /* RugPullGameView.swift */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+		B100000000000000000001 /* RubliksApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RubliksApp.swift; sourceTree = "<group>"; };
+		B100000000000000000002 /* RootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootView.swift; sourceTree = "<group>"; };
+		B100000000000000000003 /* AppTheme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppTheme.swift; sourceTree = "<group>"; };
+		B100000000000000000004 /* AppState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppState.swift; sourceTree = "<group>"; };
+		B100000000000000000005 /* SplashView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SplashView.swift; sourceTree = "<group>"; };
+		B100000000000000000006 /* OnboardingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingView.swift; sourceTree = "<group>"; };
+		B100000000000000000007 /* AuthView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthView.swift; sourceTree = "<group>"; };
+		B100000000000000000008 /* CharacterCreationView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CharacterCreationView.swift; sourceTree = "<group>"; };
+		B100000000000000000009 /* MainTabView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainTabView.swift; sourceTree = "<group>"; };
+		B10000000000000000000A /* HomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeView.swift; sourceTree = "<group>"; };
+		B10000000000000000000B /* TopicDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TopicDetailView.swift; sourceTree = "<group>"; };
+		B10000000000000000000C /* ChartView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChartView.swift; sourceTree = "<group>"; };
+		B10000000000000000000D /* GameView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GameView.swift; sourceTree = "<group>"; };
+		B10000000000000000000E /* EducationView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EducationView.swift; sourceTree = "<group>"; };
+		B10000000000000000000F /* ProfileView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileView.swift; sourceTree = "<group>"; };
+		B100000000000000000010 /* NewsItem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NewsItem.swift; sourceTree = "<group>"; };
+		B100000000000000000011 /* TopicCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TopicCard.swift; sourceTree = "<group>"; };
+		B100000000000000000012 /* CandleData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CandleData.swift; sourceTree = "<group>"; };
+		B100000000000000000013 /* QuizItem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuizItem.swift; sourceTree = "<group>"; };
+		B100000000000000000014 /* MoexMockService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MoexMockService.swift; sourceTree = "<group>"; };
+		B100000000000000000015 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		B100000000000000000016 /* CharacterAvatarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CharacterAvatarView.swift; sourceTree = "<group>"; };
+		B10000000000000000001C /* CharacterEditorSheetView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CharacterEditorSheetView.swift; sourceTree = "<group>"; };
+		B100000000000000000017 /* StocksListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StocksListView.swift; sourceTree = "<group>"; };
+		B100000000000000000018 /* CharacterAppearance.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CharacterAppearance.swift; sourceTree = "<group>"; };
+		B100000000000000000019 /* StockItem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StockItem.swift; sourceTree = "<group>"; };
+		B10000000000000000001A /* SubscriptionPlan.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SubscriptionPlan.swift; sourceTree = "<group>"; };
+		B10000000000000000001B /* UserProfile.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UserProfile.swift; sourceTree = "<group>"; };
+		B10000000000000000001D /* GameTabView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GameTabView.swift; sourceTree = "<group>"; };
+		B10000000000000000001E /* CatchTrendGameView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CatchTrendGameView.swift; sourceTree = "<group>"; };
+		B10000000000000000001F /* BuySellGameView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BuySellGameView.swift; sourceTree = "<group>"; };
+		B100000000000000000020 /* FinancialChoiceGameView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FinancialChoiceGameView.swift; sourceTree = "<group>"; };
+		B100000000000000000021 /* Portfolio.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Portfolio.swift; sourceTree = "<group>"; };
+		B100000000000000000022 /* PurchaseView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PurchaseView.swift; sourceTree = "<group>"; };
+		B100000000000000000023 /* RunnerInvestorGameView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RunnerInvestorGameView.swift; sourceTree = "<group>"; };
+		B100000000000000000024 /* SellView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SellView.swift; sourceTree = "<group>"; };
+		B100000000000000000025 /* HelpTourView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HelpTourView.swift; sourceTree = "<group>"; };
+		B100000000000000000026 /* FriendsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FriendsView.swift; sourceTree = "<group>"; };
+		B100000000000000000027 /* FriendStats.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FriendStats.swift; sourceTree = "<group>"; };
+		B100000000000000000028 /* MoexIssApi.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MoexIssApi.swift; sourceTree = "<group>"; };
+		B100000000000000000029 /* RugPullGameView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RugPullGameView.swift; sourceTree = "<group>"; };
+		C100000000000000000001 /* Rubliks.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Rubliks.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		F100000000000000000001 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		D100000000000000000001 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		E100000000000000000001 /* Rubliks */ = {
+			isa = PBXGroup;
+			children = (
+				E100000000000000000002 /* App */,
+				E100000000000000000003 /* Core */,
+				E100000000000000000004 /* Features */,
+				E100000000000000000005 /* Models */,
+				E100000000000000000006 /* Services */,
+				E100000000000000000007 /* Resources */,
+			);
+			path = Rubliks;
+			sourceTree = "<group>";
+		};
+		E100000000000000000002 /* App */ = {
+			isa = PBXGroup;
+			children = (
+				B100000000000000000001 /* RubliksApp.swift */,
+				B100000000000000000002 /* RootView.swift */,
+			);
+			path = App;
+			sourceTree = "<group>";
+		};
+		E100000000000000000003 /* Core */ = {
+			isa = PBXGroup;
+			children = (
+				E100000000000000000008 /* Theme */,
+			);
+			path = Core;
+			sourceTree = "<group>";
+		};
+		E100000000000000000004 /* Features */ = {
+			isa = PBXGroup;
+			children = (
+				E100000000000000000009 /* Splash */,
+				E10000000000000000000A /* Onboarding */,
+				E10000000000000000000B /* Auth */,
+				E10000000000000000000C /* Character */,
+				E10000000000000000000D /* Main */,
+				E10000000000000000000E /* Home */,
+				E10000000000000000000F /* Chart */,
+				E100000000000000000010 /* Game */,
+				E100000000000000000011 /* Education */,
+				E100000000000000000012 /* Profile */,
+				E100000000000000000013 /* Help */,
+				E100000000000000000014 /* Friends */,
+			);
+			path = Features;
+			sourceTree = "<group>";
+		};
+		E100000000000000000005 /* Models */ = {
+			isa = PBXGroup;
+			children = (
+				B100000000000000000010 /* NewsItem.swift */,
+				B100000000000000000011 /* TopicCard.swift */,
+				B100000000000000000012 /* CandleData.swift */,
+				B100000000000000000013 /* QuizItem.swift */,
+				B100000000000000000018 /* CharacterAppearance.swift */,
+				B100000000000000000019 /* StockItem.swift */,
+				B10000000000000000001A /* SubscriptionPlan.swift */,
+				B10000000000000000001B /* UserProfile.swift */,
+				B100000000000000000021 /* Portfolio.swift */,
+				B100000000000000000027 /* FriendStats.swift */,
+			);
+			path = Models;
+			sourceTree = "<group>";
+		};
+		E100000000000000000006 /* Services */ = {
+			isa = PBXGroup;
+			children = (
+				B100000000000000000014 /* MoexMockService.swift */,
+				B100000000000000000028 /* MoexIssApi.swift */,
+			);
+			path = Services;
+			sourceTree = "<group>";
+		};
+		E100000000000000000007 /* Resources */ = {
+			isa = PBXGroup;
+			children = (
+				B100000000000000000015 /* Assets.xcassets */,
+				F100000000000000000001 /* Info.plist */,
+			);
+			path = Resources;
+			sourceTree = "<group>";
+		};
+		E100000000000000000008 /* Theme */ = {
+			isa = PBXGroup;
+			children = (
+				B100000000000000000003 /* AppTheme.swift */,
+				B100000000000000000004 /* AppState.swift */,
+			);
+			path = Theme;
+			sourceTree = "<group>";
+		};
+		E100000000000000000009 /* Splash */ = {
+			isa = PBXGroup;
+			children = (
+				B100000000000000000005 /* SplashView.swift */,
+			);
+			path = Splash;
+			sourceTree = "<group>";
+		};
+		E10000000000000000000A /* Onboarding */ = {
+			isa = PBXGroup;
+			children = (
+				B100000000000000000006 /* OnboardingView.swift */,
+			);
+			path = Onboarding;
+			sourceTree = "<group>";
+		};
+		E10000000000000000000B /* Auth */ = {
+			isa = PBXGroup;
+			children = (
+				B100000000000000000007 /* AuthView.swift */,
+			);
+			path = Auth;
+			sourceTree = "<group>";
+		};
+		E10000000000000000000C /* Character */ = {
+			isa = PBXGroup;
+			children = (
+				B100000000000000000008 /* CharacterCreationView.swift */,
+				B100000000000000000016 /* CharacterAvatarView.swift */,
+				B10000000000000000001C /* CharacterEditorSheetView.swift */,
+			);
+			path = Character;
+			sourceTree = "<group>";
+		};
+		E10000000000000000000D /* Main */ = {
+			isa = PBXGroup;
+			children = (
+				B100000000000000000009 /* MainTabView.swift */,
+			);
+			path = Main;
+			sourceTree = "<group>";
+		};
+		E10000000000000000000E /* Home */ = {
+			isa = PBXGroup;
+			children = (
+				B10000000000000000000A /* HomeView.swift */,
+				B10000000000000000000B /* TopicDetailView.swift */,
+				B100000000000000000017 /* StocksListView.swift */,
+				B100000000000000000022 /* PurchaseView.swift */,
+				B100000000000000000024 /* SellView.swift */,
+			);
+			path = Home;
+			sourceTree = "<group>";
+		};
+		E10000000000000000000F /* Chart */ = {
+			isa = PBXGroup;
+			children = (
+				B10000000000000000000C /* ChartView.swift */,
+			);
+			path = Chart;
+			sourceTree = "<group>";
+		};
+		E100000000000000000010 /* Game */ = {
+			isa = PBXGroup;
+			children = (
+				B10000000000000000000D /* GameView.swift */,
+				B10000000000000000001D /* GameTabView.swift */,
+				B10000000000000000001E /* CatchTrendGameView.swift */,
+				B10000000000000000001F /* BuySellGameView.swift */,
+				B100000000000000000020 /* FinancialChoiceGameView.swift */,
+				B100000000000000000023 /* RunnerInvestorGameView.swift */,
+				B100000000000000000029 /* RugPullGameView.swift */,
+			);
+			path = Game;
+			sourceTree = "<group>";
+		};
+		E100000000000000000011 /* Education */ = {
+			isa = PBXGroup;
+			children = (
+				B10000000000000000000E /* EducationView.swift */,
+			);
+			path = Education;
+			sourceTree = "<group>";
+		};
+		E100000000000000000012 /* Profile */ = {
+			isa = PBXGroup;
+			children = (
+				B10000000000000000000F /* ProfileView.swift */,
+			);
+			path = Profile;
+			sourceTree = "<group>";
+		};
+		E100000000000000000014 /* Friends */ = {
+			isa = PBXGroup;
+			children = (
+				B100000000000000000026 /* FriendsView.swift */,
+			);
+			path = Friends;
+			sourceTree = "<group>";
+		};
+		E100000000000000000013 /* Help */ = {
+			isa = PBXGroup;
+			children = (
+				B100000000000000000025 /* HelpTourView.swift */,
+			);
+			path = Help;
+			sourceTree = "<group>";
+		};
+		E200000000000000000001 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				C100000000000000000001 /* Rubliks.app */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		T100000000000000000001 /* Rubliks */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = C200000000000000000002 /* Build configuration list for PBXNativeTarget "Rubliks" */;
+			buildPhases = (
+				D100000000000000000002 /* Sources */,
+				D100000000000000000001 /* Frameworks */,
+				D100000000000000000003 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = Rubliks;
+			productName = Rubliks;
+			productReference = C100000000000000000001 /* Rubliks.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		P100000000000000000001 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = 1;
+				LastSwiftUpdateCheck = 1500;
+				LastUpgradeCheck = 1500;
+			};
+			buildConfigurationList = C200000000000000000001 /* Build configuration list for PBXProject "Rubliks" */;
+			compatibilityVersion = "Xcode 14.0";
+			developmentRegion = ru;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				ru,
+				Base,
+			);
+			mainGroup = E100000000000000000001 /* Rubliks */;
+			productRefGroup = E200000000000000000001 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				T100000000000000000001 /* Rubliks */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		D100000000000000000003 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				A100000000000000000015 /* Assets.xcassets in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		D100000000000000000002 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				A100000000000000000001 /* RubliksApp.swift in Sources */,
+				A100000000000000000002 /* RootView.swift in Sources */,
+				A100000000000000000003 /* AppTheme.swift in Sources */,
+				A100000000000000000004 /* AppState.swift in Sources */,
+				A100000000000000000005 /* SplashView.swift in Sources */,
+				A100000000000000000006 /* OnboardingView.swift in Sources */,
+				A100000000000000000007 /* AuthView.swift in Sources */,
+				A100000000000000000008 /* CharacterCreationView.swift in Sources */,
+				A100000000000000000009 /* MainTabView.swift in Sources */,
+				A10000000000000000000A /* HomeView.swift in Sources */,
+				A10000000000000000000B /* TopicDetailView.swift in Sources */,
+				A10000000000000000000C /* ChartView.swift in Sources */,
+				A10000000000000000000D /* GameView.swift in Sources */,
+				A10000000000000000001D /* GameTabView.swift in Sources */,
+				A10000000000000000001E /* CatchTrendGameView.swift in Sources */,
+				A10000000000000000001F /* BuySellGameView.swift in Sources */,
+				A100000000000000000020 /* FinancialChoiceGameView.swift in Sources */,
+				A100000000000000000021 /* Portfolio.swift in Sources */,
+				A100000000000000000022 /* PurchaseView.swift in Sources */,
+				A100000000000000000023 /* RunnerInvestorGameView.swift in Sources */,
+				A100000000000000000024 /* SellView.swift in Sources */,
+				A100000000000000000025 /* HelpTourView.swift in Sources */,
+				A10000000000000000000E /* EducationView.swift in Sources */,
+				A10000000000000000000F /* ProfileView.swift in Sources */,
+				A100000000000000000010 /* NewsItem.swift in Sources */,
+				A100000000000000000011 /* TopicCard.swift in Sources */,
+				A100000000000000000012 /* CandleData.swift in Sources */,
+				A100000000000000000013 /* QuizItem.swift in Sources */,
+				A100000000000000000014 /* MoexMockService.swift in Sources */,
+				A100000000000000000016 /* CharacterAvatarView.swift in Sources */,
+				A10000000000000000001C /* CharacterEditorSheetView.swift in Sources */,
+				A100000000000000000017 /* StocksListView.swift in Sources */,
+				A100000000000000000018 /* CharacterAppearance.swift in Sources */,
+				A100000000000000000019 /* StockItem.swift in Sources */,
+				A10000000000000000001A /* SubscriptionPlan.swift in Sources */,
+				A10000000000000000001B /* UserProfile.swift in Sources */,
+				A100000000000000000026 /* FriendsView.swift in Sources */,
+				A100000000000000000027 /* FriendStats.swift in Sources */,
+				A100000000000000000028 /* MoexIssApi.swift in Sources */,
+				A100000000000000000029 /* RugPullGameView.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		X100000000000000000001 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				SDKROOT = iphoneos;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+			};
+			name = Debug;
+		};
+		X100000000000000000002 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				SDKROOT = iphoneos;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Release;
+		};
+		X100000000000000000003 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = DZ3KF5NSPZ;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = Rubliks/Resources/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = "Рубликс";
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.rubliks.app;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Debug;
+		};
+		X100000000000000000004 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = DZ3KF5NSPZ;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = Rubliks/Resources/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = "Рубликс";
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.rubliks.app;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		C200000000000000000001 /* Build configuration list for PBXProject "Rubliks" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				X100000000000000000001 /* Debug */,
+				X100000000000000000002 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		C200000000000000000002 /* Build configuration list for PBXNativeTarget "Rubliks" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				X100000000000000000003 /* Debug */,
+				X100000000000000000004 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = P100000000000000000001 /* Project object */;
+}

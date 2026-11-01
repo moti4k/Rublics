@@ -1,0 +1,661 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="description" content="Рубликс — учебный симулятор инвестиций: демо-портфель, финансовые игры и материалы без реальных денег.">
+  <link rel="icon" href="favicon.svg" type="image/svg+xml">
+  <meta name="theme-color" content="#5B2D8C">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <title>Рубликс</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,400;0,500;0,600;0,700;0,800;1,600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div id="auth-screen" class="auth-screen hidden">
+    <div class="auth-header">
+      <h1 class="auth-title">ПРИВЕТ!</h1>
+      <p class="auth-subtitle">ДОБРО ПОЖАЛОВАТЬ В РУБЛИКС</p>
+      <p class="auth-local-hint hidden" id="authLocalHint">Данные хранятся только в этом браузере. У каждого аккаунта — свой портфель и прогресс.</p>
+    </div>
+    <div class="auth-tabs">
+      <button type="button" class="auth-tab" id="authTabLogin">Войти</button>
+      <button type="button" class="auth-tab active" id="authTabRegister">Регистрация</button>
+    </div>
+    <div class="auth-forms">
+      <form class="auth-card auth-card-register" id="authFormRegister">
+        <h2 class="auth-card-title">Создайте аккаунт</h2>
+        <input type="email" class="auth-input" id="authEmail" placeholder="Email" autocomplete="email">
+        <input type="password" class="auth-input" id="authPassword" placeholder="Пароль (минимум 4 символа)" autocomplete="new-password">
+        <input type="password" class="auth-input" id="authConfirmPassword" placeholder="Повторите пароль" autocomplete="new-password">
+        <input type="text" class="auth-input" id="authDisplayName" placeholder="Как к вам обращаться?" autocomplete="name">
+        <p class="auth-error" id="authError"></p>
+        <button type="submit" class="auth-submit">ЗАРЕГИСТРИРОВАТЬСЯ</button>
+      </form>
+      <form class="auth-card auth-card-login hidden" id="authFormLogin">
+        <h2 class="auth-card-title">Вход в аккаунт</h2>
+        <input type="email" class="auth-input" id="authLoginEmail" placeholder="Email" autocomplete="email">
+        <input type="password" class="auth-input" id="authLoginPassword" placeholder="Пароль" autocomplete="current-password">
+        <p class="auth-error" id="authLoginError"></p>
+        <button type="submit" class="auth-submit">ВОЙТИ</button>
+      </form>
+    </div>
+  </div>
+
+  <div id="app" class="main-app">
+    <header class="header header-brand">
+      <div class="header-brand-row">
+        <h1 class="header-title">Рубликс</h1>
+        <button type="button" class="btn-help" id="btnHeaderHelp" aria-label="О приложении" title="О приложении">?</button>
+      </div>
+      <p class="header-quotes-meta" id="quotesRefreshLabel" aria-live="polite"></p>
+    </header>
+
+    <main class="main">
+      <div id="screen-home" class="screen active">
+        <p class="home-tagline home-tagline-compact">РУБЛИКС — опыт без потерь</p>
+        <div class="home-subtabs" role="tablist">
+          <button type="button" class="home-subtab active" id="homeSubMain" role="tab" aria-selected="true">Главная</button>
+          <button type="button" class="home-subtab" id="homeSubFav" role="tab" aria-selected="false">Избранное</button>
+        </div>
+        <div id="homeFavPanel" class="home-fav-panel hidden">
+          <p class="section-subtitle">Избранное по типам инструментов (в демо — акции TQBR)</p>
+          <div class="fav-type-chips" role="tablist" aria-label="Тип инструмента в избранном">
+            <button type="button" class="fav-chip active" data-fav-kind="stocks" aria-selected="true">Акции <span class="fav-chip-count" id="favCountStocks">0</span></button>
+            <button type="button" class="fav-chip" disabled title="Скоро в MVP">Облигации</button>
+            <button type="button" class="fav-chip" disabled title="Скоро в MVP">Фьючерсы</button>
+            <button type="button" class="fav-chip" disabled title="Скоро в MVP">Валюта</button>
+          </div>
+          <div class="home-fav-list" id="homeFavoritesList"></div>
+        </div>
+        <div id="homeMainPanels">
+          <section class="home-stories-section" aria-label="Сторис">
+            <div class="home-stories-scroll" id="homeStoriesStrip"></div>
+          </section>
+          <section class="news-section news-section-first">
+            <div class="section-row">
+              <h2 class="section-title">Сейчас важно</h2>
+              <a href="#" class="link-all" id="linkAllNews">Все материалы</a>
+            </div>
+            <div class="news-scroll" id="newsCarousel"></div>
+          </section>
+          <section class="hero-portfolio-section">
+            <div class="hero-portfolio-card">
+              <div class="hero-portfolio-top">
+                <div>
+                  <span class="hero-portfolio-label">Оценка портфеля</span>
+                  <button type="button" class="portfolio-chip" id="portfolioAccountChip" title="Счета демо-портфеля"><span id="portfolioChipLabel">Основной счёт</span></button>
+                </div>
+                <span class="hero-cash-note">Деньги на счёте: <strong id="balanceAmount">—</strong> ₽</span>
+              </div>
+              <p class="hero-portfolio-sum" id="homePortfolioTotal">—</p>
+              <div class="hero-pill-row">
+                <button type="button" class="pill-toggle active" id="pillPortfolioDay">За день</button>
+                <button type="button" class="pill-toggle" id="pillPortfolioAll">За всё время</button>
+              </div>
+              <p class="hero-portfolio-change" id="homePortfolioDay">—</p>
+              <div class="hero-quick-actions hero-quick-actions--triple">
+                <button type="button" class="qa-circle" id="btnHomeOperations" aria-label="Операции">
+                  <span class="qa-svg" aria-hidden="true"></span>
+                  <span class="qa-label">Операции</span>
+                </button>
+                <button type="button" class="qa-circle" id="btnHomeAnalytics" aria-label="Аналитика">
+                  <span class="qa-svg qa-chart" aria-hidden="true"></span>
+                  <span class="qa-label">Аналитика</span>
+                </button>
+                <button type="button" class="qa-circle" id="btnHomeEarn" aria-label="Заработок рубликсов и обучение" title="Квесты, уроки и рубликсы">
+                  <span class="qa-svg qa-earn" aria-hidden="true"></span>
+                  <span class="qa-label">Заработок</span>
+                </button>
+              </div>
+              <p class="instrument-chips-label">Инструменты</p>
+              <div class="instrument-chips" role="group" aria-label="Тип инструмента">
+                <button type="button" class="inst-chip active" data-inst="stocks">Акции</button>
+                <button type="button" class="inst-chip" data-inst="bonds">Облигации</button>
+                <button type="button" class="inst-chip" data-inst="metals">Металлы</button>
+                <button type="button" class="inst-chip" data-inst="fut">Фьючерсы</button>
+              </div>
+            </div>
+          </section>
+          <section class="home-top-section">
+            <h2 class="section-title">Кто сегодня зажигает на бирже?</h2>
+            <p class="section-subtitle" id="homeMoversSortHint">У кого больше всего менялась цена за день?</p>
+            <div class="top-movers" id="homeTopMovers"></div>
+          </section>
+          <section class="home-shortcuts">
+            <a href="#" class="shortcut-card" id="linkShortcutEdu">
+              <span class="shortcut-icon shortcut-svg-edu" aria-hidden="true"></span>
+              <div><strong>Обучение и миссии</strong><p>Уроки, квесты, рубликсы</p></div>
+              <span class="chevron">›</span>
+            </a>
+            <a href="#" class="shortcut-card" id="linkShortcutGames">
+              <span class="shortcut-icon shortcut-svg-game" aria-hidden="true"></span>
+              <div><strong>Мини-игры</strong><p>Викторина и челленджи</p></div>
+              <span class="chevron">›</span>
+            </a>
+            <a href="#" class="shortcut-card" id="linkParentReport">
+              <span class="shortcut-icon shortcut-svg-family" aria-hidden="true"></span>
+              <div><strong>Отчёт родителю</strong><p>Поделиться прогрессом</p></div>
+              <span class="chevron">›</span>
+            </a>
+          </section>
+          <section class="stocks-section">
+            <div class="section-row section-row--stocks">
+              <h2 class="section-title">Акции</h2>
+              <div class="section-row-links">
+                <a href="#" class="link-all" id="linkSearchStocks">Поиск</a>
+                <a href="#" class="link-all" id="linkAllStocks">Все акции</a>
+              </div>
+            </div>
+            <div class="stocks-scroll" id="stocksList"></div>
+          </section>
+          <section class="topics-section">
+            <h2 class="section-title">Темы</h2>
+            <div class="topics-grid" id="topicsGrid"></div>
+          </section>
+          <section class="holdings-section" id="holdingsSection">
+            <div class="section-row">
+              <h2 class="section-title">В портфеле</h2>
+              <button type="button" class="btn-text" id="btnSell">Продать</button>
+            </div>
+            <div id="holdingsList"></div>
+          </section>
+        </div>
+      </div>
+
+      <div id="screen-onboarding" class="screen screen-flow">
+        <div class="flow-inner">
+          <h2 class="flow-brand">РУБЛИКС</h2>
+          <p class="flow-slogan">Опыт без потерь</p>
+          <p class="flow-text">Короткий тест стиля инвестора поможет подстроить сложность игр и материалов под тебя.</p>
+          <button type="button" class="btn-primary btn-block" id="btnOnboardingTest">Пройти тест</button>
+          <button type="button" class="btn-text btn-block" id="btnOnboardingSkip">Пропустить</button>
+        </div>
+      </div>
+
+      <div id="screen-entrance" class="screen screen-flow">
+        <div class="nav-bar-inner entrance-nav">
+          <button type="button" class="btn-back" id="btnBackEntrance">←</button>
+          <div class="entrance-progress-wrap">
+            <div class="entrance-progress-track">
+              <div class="entrance-progress-fill" id="entranceProgressFill"></div>
+            </div>
+            <span class="entrance-progress-text" id="entranceProgress">1/6</span>
+          </div>
+        </div>
+        <div class="flow-inner flow-inner-tight" id="entranceBody"></div>
+      </div>
+
+      <div id="screen-entrance-result" class="screen screen-flow">
+        <div class="flow-inner">
+          <p class="flow-badge" id="entranceResultBadge">Уровень</p>
+          <h2 class="flow-result-title" id="entranceResultTitle"></h2>
+          <p class="flow-text" id="entranceResultBody"></p>
+          <button type="button" class="btn-primary btn-block" id="btnEntranceDone">Перейти в приложение</button>
+        </div>
+      </div>
+
+      <div id="screen-victorina-entry" class="screen screen-flow screen-play">
+        <div class="nav-bar-inner">
+          <button type="button" class="btn-back" id="btnBackVictorinaEntry">←</button>
+          <h2 class="nav-title">Викторина рынка</h2>
+        </div>
+        <div class="flow-inner">
+          <p class="victorina-hook-badge" aria-hidden="true">🔥 20 сек · без зубрёжки</p>
+          <p class="flow-text">10 вопросов, на каждый <strong>20 секунд</strong>. Три варианта: вырастет, упадёт или без сильных изменений — как реакция рынка на новость.</p>
+          <p class="flow-text"><strong>≥70% верных</strong> — победа в раунде. После ответа — короткое пояснение (ставка ЦБ, дивиденды, нефть и др.). Награды: XP и «Рубликсы» (локально).</p>
+          <p class="victorina-limit-line">Осталось сегодня: <strong id="victorinaPlaysLeft">5</strong> из <strong id="victorinaDailyLimit">5</strong></p>
+          <p class="flow-text subtle victorina-sub-hint hidden" id="victorinaSubHint"></p>
+          <button type="button" class="btn-primary btn-block" id="btnVictorinaStart">Играть</button>
+        </div>
+      </div>
+
+      <div id="screen-victorina-game" class="screen screen-flow screen-play">
+        <div class="nav-bar-inner victorina-game-bar">
+          <span class="victorina-timer-wrap"><span class="victorina-timer-label">Секунд</span> <span id="victorinaTimer">20</span></span>
+          <span class="nav-title" id="victorinaProgress">1/10</span>
+        </div>
+        <div class="flow-inner flow-inner-tight">
+          <p class="victorina-question" id="victorinaText"></p>
+          <div class="victorina-btns">
+            <button type="button" class="btn-victorina btn-victorina-up" data-ans="0" id="btnVictorina0">↗ Вырастет</button>
+            <button type="button" class="btn-victorina btn-victorina-down" data-ans="1" id="btnVictorina1">↘ Упадёт</button>
+            <button type="button" class="btn-victorina btn-victorina-flat" data-ans="2" id="btnVictorina2">→ Без сильных изменений</button>
+          </div>
+          <p class="victorina-explain hidden" id="victorinaExplain"></p>
+        </div>
+      </div>
+
+      <div id="screen-victorina-result" class="screen screen-flow screen-play">
+        <div class="flow-inner">
+          <h2 class="flow-result-title" id="victorinaResultTitle">Итог</h2>
+          <p class="flow-text" id="victorinaResultStats"></p>
+          <p class="flow-text" id="victorinaResultRewards"></p>
+          <button type="button" class="btn-primary btn-block" id="btnVictorinaAgain">Ещё раз</button>
+          <button type="button" class="btn-text btn-block" id="btnVictorinaToGames">К играм</button>
+        </div>
+      </div>
+
+      <div id="screen-news" class="screen screen-flow">
+        <div class="nav-bar-inner">
+          <button type="button" class="btn-back" id="btnBackNews">←</button>
+          <h2 class="nav-title">Материалы</h2>
+        </div>
+        <div class="article-list" id="newsArticleList"></div>
+      </div>
+
+      <div id="screen-article" class="screen screen-flow">
+        <div class="nav-bar-inner">
+          <button type="button" class="btn-back" id="btnBackArticle">←</button>
+          <h2 class="nav-title">Статья</h2>
+        </div>
+        <article class="article-view" id="articleView"></article>
+      </div>
+
+      <div id="screen-parent" class="screen screen-flow">
+        <div class="nav-bar-inner">
+          <button type="button" class="btn-back" id="btnBackParent">←</button>
+          <h2 class="nav-title">Прогресс</h2>
+        </div>
+        <div class="flow-inner parent-report" id="parentReportBody"></div>
+      </div>
+
+      <div id="screen-sell" class="screen">
+        <div class="nav-bar-inner">
+          <button type="button" class="btn-back" id="btnBackSell">Закрыть</button>
+          <h2 class="nav-title">Продать в рубли</h2>
+        </div>
+        <p class="message" id="sellMessage"></p>
+        <div id="sellStockList"></div>
+        <div id="sellCryptoList"></div>
+        <p id="sellEmpty" class="placeholder hidden">Нет активов для продажи. Сначала купите акции или криптовалюту.</p>
+      </div>
+
+      <div id="sellSheet" class="modal hidden" aria-hidden="true">
+        <div class="modal-backdrop" id="sellSheetBackdrop"></div>
+        <div class="modal-content">
+          <h3 id="sellSheetTitle">Продать</h3>
+          <label class="label">Количество</label>
+          <input type="text" id="sellSheetQty" class="input" inputmode="decimal" placeholder="0">
+          <p class="total-line">Итого: <span id="sellSheetTotal">0</span> ₽</p>
+          <div class="modal-actions">
+            <button type="button" class="btn-secondary" id="sellSheetCancel">Отмена</button>
+            <button type="button" class="btn-primary" id="sellSheetConfirm">Продать</button>
+          </div>
+        </div>
+      </div>
+
+      <div id="screen-stocks" class="screen">
+        <div class="nav-bar-inner">
+          <button type="button" class="btn-back" id="btnBackStocks">←</button>
+          <h2 class="nav-title">Все акции</h2>
+        </div>
+        <div class="stocks-search-block">
+          <input type="search" class="stocks-search-input" id="stocksSearchInput" placeholder="Тикер или название…" autocomplete="off" enterkeyhint="search">
+        </div>
+        <p class="stocks-search-hint" id="stocksSearchHint"></p>
+        <div class="stocks-sort-bar" role="group" aria-label="Сортировка списка">
+          <button type="button" class="btn-sort-chip active" id="btnStocksSortMovers">По движению за день</button>
+          <button type="button" class="btn-sort-chip" id="btnStocksSortAlpha">По алфавиту (тикер)</button>
+        </div>
+        <div class="stocks-full-list" id="stocksFullList"></div>
+      </div>
+
+      <div id="screen-chart" class="screen">
+        <div class="security-header">
+          <button type="button" class="btn-back" id="btnBackChart">←</button>
+          <div class="security-title-block">
+            <h2 class="security-name" id="chartSecurityName">—</h2>
+            <p class="security-ticker-line"><span id="chartSecurityTicker">SBER</span></p>
+          </div>
+          <button type="button" class="btn-icon-ghost" id="btnSecurityFav" aria-label="В избранное" title="Избранное">☆</button>
+          <button type="button" class="btn-icon-ghost" id="btnSecurityShare" aria-label="Поделиться" title="Поделиться">↗</button>
+        </div>
+        <div class="security-tabs" role="tablist">
+          <button type="button" class="sec-tab active" data-sec-tab="overview">Обзор</button>
+          <button type="button" class="sec-tab" data-sec-tab="orderbook">Стакан</button>
+          <button type="button" class="sec-tab" data-sec-tab="dividends">Дивиденды</button>
+          <button type="button" class="sec-tab" data-sec-tab="news">Новости</button>
+          <button type="button" class="sec-tab" data-sec-tab="events">События</button>
+        </div>
+        <div id="secPanelOverview" class="sec-tab-panel">
+          <div class="chart-card chart-card-embedded">
+            <div class="chart-price-row">
+              <div>
+                <span class="chart-price-big"><span class="currency">₽</span> <span class="chart-price-value" id="chartPrice">—</span></span>
+                <p class="chart-day-change" id="chartDayChange">—</p>
+              </div>
+            </div>
+            <div class="chart-scale-bar" id="chartScaleBar"></div>
+            <div class="chart-container" id="chartContainer">
+              <div id="chartLoading" class="chart-loading">Загрузка…</div>
+              <div id="candlestickChart" class="chart-inner"></div>
+              <div id="volumeChart" class="chart-inner chart-volume"></div>
+            </div>
+            <button type="button" class="link-load-older hidden" id="btnLoadOlder">Загрузить более старые данные</button>
+            <p class="flow-text subtle">Графики: <a href="https://www.tradingview.com/" target="_blank" rel="noopener noreferrer">TradingView Lightweight Charts™</a></p>
+            <section class="security-about">
+              <h3 class="security-about-title">О бумаге и эмитенте</h3>
+              <p class="security-about-body" id="securityAboutBody"></p>
+            </section>
+            <section class="security-metrics" id="securityMetricsBlock">
+              <h3 class="security-about-title">Финансовые показатели</h3>
+              <p class="flow-text subtle security-metrics-disclaimer">Учебные ориентиры для симулятора, не инвестиционная рекомендация.</p>
+              <ul class="security-metrics-list" id="securityMetricsList"></ul>
+            </section>
+            <div class="security-trade-row">
+              <button type="button" class="btn-secondary btn-trade-sell" id="btnSellFromChart">Продать</button>
+              <button type="button" class="btn-primary btn-trade-buy" id="btnBuyStock">Купить <span id="btnBuyTicker">SBER</span></button>
+            </div>
+            <div class="issuer-media-hint">
+              <span class="issuer-media-label">Видео и материалы эмитента</span>
+              <button type="button" class="btn-text btn-issuer-placeholder" id="btnIssuerMedia">Скоро</button>
+            </div>
+          </div>
+        </div>
+        <div id="secPanelOrderbook" class="sec-tab-panel hidden">
+          <div id="secOrderbookRoot" class="sec-panel-inner">
+            <p class="sec-panel-hint" id="secOrderbookHint">Загрузка стакана…</p>
+            <div id="secOrderbookTable" class="orderbook-wrap"></div>
+          </div>
+        </div>
+        <div id="secPanelDividends" class="sec-tab-panel hidden">
+          <div id="secDividendsRoot" class="sec-panel-inner"></div>
+        </div>
+        <div id="secPanelNews" class="sec-tab-panel hidden">
+          <div id="secNewsRoot" class="sec-panel-inner"></div>
+        </div>
+        <div id="secPanelEvents" class="sec-tab-panel hidden">
+          <div id="secEventsRoot" class="sec-panel-inner"></div>
+        </div>
+      </div>
+
+      <div id="screen-analytics" class="screen screen-flow">
+        <div class="nav-bar-inner">
+          <button type="button" class="btn-back" id="btnBackAnalytics">←</button>
+          <h2 class="nav-title">Аналитика</h2>
+        </div>
+        <div class="flow-inner" id="analyticsRoot"></div>
+      </div>
+
+      <div id="screen-operations" class="screen screen-flow">
+        <div class="nav-bar-inner">
+          <button type="button" class="btn-back" id="btnBackOperations">←</button>
+          <h2 class="nav-title">Операции</h2>
+        </div>
+        <div class="flow-inner" id="operationsRoot"></div>
+      </div>
+
+      <div id="screen-purchase" class="screen">
+        <div class="nav-bar-inner">
+          <button type="button" class="btn-back" id="btnBackPurchase">Отмена</button>
+          <h2 class="nav-title">Купить акции</h2>
+        </div>
+        <div class="purchase-form">
+          <div class="balance-row">
+            <span>Доступно</span>
+            <span id="purchaseBalance">— ₽</span>
+          </div>
+          <div class="purchase-account-row" id="purchaseAccountRow">
+            <label class="label" for="purchaseAccount">Счёт</label>
+            <select id="purchaseAccount" class="input"></select>
+          </div>
+          <label class="label">Тип заявки</label>
+          <p class="purchase-order-type">Рыночная (в демо). Лимитные и отложенные — в следующих версиях.</p>
+          <label class="label">Акция</label>
+          <select id="purchaseTicker" class="input"></select>
+          <label class="label">Количество</label>
+          <input type="text" id="purchaseQty" class="input" inputmode="decimal" placeholder="0" value="1">
+          <p class="total-line" id="purchaseTotal">Итого: 0 ₽</p>
+          <button type="button" class="btn-primary" id="btnPurchase">Купить</button>
+          <p class="message" id="purchaseMessage"></p>
+        </div>
+      </div>
+
+      <div id="screen-game" class="screen">
+        <header class="game-hub">
+          <p class="game-hub-eyebrow">Игры</p>
+          <h2 class="game-hub-title">Выбери режим</h2>
+          <p class="game-hub-lead">Без реальных денег — зато реальные темы: ставка ЦБ, дивы, нефть. Заходи на пару минут и прокачай чувство рынка.</p>
+        </header>
+        <div class="game-cards" id="gameCards"></div>
+      </div>
+
+      <div id="screen-rugpull" class="screen screen-rugpull">
+        <div class="nav-bar-inner">
+          <button type="button" class="btn-back" id="btnBackRugpull">←</button>
+          <h2 class="nav-title">Раг пул</h2>
+        </div>
+        <div class="rugpull-shell">
+          <p class="rugpull-desc">Монета растёт, но в любой момент может рухнуть. Вложи сумму, продай до падения — или потеряешь вложенное.</p>
+          <div class="rugpull-chart-wrap">
+            <canvas id="rugpullChart" width="300" height="140"></canvas>
+          </div>
+          <div class="rugpull-balance">
+            <span>Баланс</span>
+            <span id="rugpullBalance">10 000 ₽</span>
+          </div>
+          <div id="rugpullIdle">
+            <label class="label">Сумма вложения, ₽</label>
+            <input type="text" id="rugpullBet" class="input" value="1000">
+            <button type="button" class="btn-primary" id="rugpullInvest">Вложить</button>
+          </div>
+          <div id="rugpullPumping" class="hidden">
+            <p class="rugpull-multiplier">× <span id="rugpullMultiplier">1.00</span></p>
+            <p class="rugpull-current" id="rugpullCurrent">Сейчас: 0 ₽</p>
+            <button type="button" class="btn-sell" id="rugpullSell">Продать</button>
+          </div>
+          <div id="rugpullCrashed" class="hidden">
+            <p class="rugpull-failed">FAILED</p>
+            <p class="rugpull-failed-desc">Монета рухнула. Вложенные деньги обнулены.</p>
+            <button type="button" class="btn-primary" id="rugpullPlayAgain">Играть снова</button>
+          </div>
+        </div>
+      </div>
+
+      <div id="screen-quiz" class="screen screen-quiz-app">
+        <div class="nav-bar-inner quiz-nav-bar quiz-nav-bar-stack">
+          <button type="button" class="btn-back" id="btnBackQuiz">←</button>
+          <div class="quiz-nav-titles">
+            <h2 class="nav-title">Дневной тест «Рубликс»</h2>
+            <p class="quiz-nav-tagline hidden" id="quizNavTagline"></p>
+          </div>
+        </div>
+        <div id="quizContent" class="quiz-content"></div>
+      </div>
+
+      <div id="screen-choice" class="screen screen-quiz-app">
+        <div class="nav-bar-inner quiz-nav-bar">
+          <button type="button" class="btn-back" id="btnBackChoice">←</button>
+          <h2 class="nav-title">Финансовый выбор</h2>
+        </div>
+        <div class="quiz-content game-placeholder" id="choiceContent"></div>
+      </div>
+
+      <div id="screen-runner" class="screen">
+        <div class="nav-bar-inner">
+          <button type="button" class="btn-back" id="btnBackRunner">←</button>
+          <h2 class="nav-title">Вперёд, инвестор!</h2>
+        </div>
+        <div id="runnerContent" class="runner-container"></div>
+      </div>
+
+      <div id="screen-topic" class="screen">
+        <div class="nav-bar-inner">
+          <button type="button" class="btn-back" id="btnBackTopic">←</button>
+          <h2 class="nav-title" id="topicDetailTitle">Тема</h2>
+        </div>
+        <div class="topic-detail-content" id="topicDetailContent"></div>
+      </div>
+
+      <div id="screen-education" class="screen">
+        <h2 class="section-title page-title">Учебные материалы</h2>
+        <div id="educationLessons"></div>
+        <a href="https://t.me/rony_cow" target="_blank" rel="noopener noreferrer" class="expert-card" id="btnExpert">
+          <span class="expert-icon">✓</span>
+          <div>
+            <strong>Запросить консультацию у эксперта</strong>
+            <p>Персональные консультации и разбор тем</p>
+          </div>
+          <span class="chevron">›</span>
+        </a>
+      </div>
+
+      <div id="screen-friends" class="screen">
+        <h2 class="section-title page-title">Друзья</h2>
+        <p class="section-subtitle" id="friendsDemoHint">В гостевом режиме друзья и их результаты — учебные примеры.</p>
+        <div class="add-friend-section">
+          <h3 class="subsection-title">Добавить в друзья</h3>
+          <div class="add-friend-row">
+            <input type="email" id="friendEmail" class="input input-inline" placeholder="Email друга">
+            <input type="text" id="friendName" class="input input-inline optional" placeholder="Имя (необязательно)">
+            <button type="button" class="btn-add-friend" id="btnAddFriend" aria-label="Добавить">+</button>
+          </div>
+        </div>
+        <div class="ranking-section">
+          <label>Рейтинг:</label>
+          <select id="friendsRanking">
+            <option value="balance">По балансу</option>
+            <option value="videos">По урокам</option>
+            <option value="quiz">По квизу</option>
+          </select>
+        </div>
+        <div id="friendsList"></div>
+      </div>
+
+      <div id="screen-profile" class="screen">
+        <h2 class="section-title page-title">Профиль</h2>
+        <button type="button" class="profile-card" id="profileCard">
+          <div class="profile-avatar" id="profileAvatar"></div>
+          <div class="profile-info">
+            <strong id="profileName">Инвестор</strong>
+            <span id="profileSubtitle">Рубликс</span>
+            <span id="profileInvestorLevel" class="profile-level"></span>
+            <span class="profile-hint">Нажмите, чтобы изменить внешность</span>
+          </div>
+          <span class="chevron">›</span>
+        </button>
+        <div class="subscription-card subscription-card--profile">
+          <div class="section-row">
+            <h3 class="subsection-title subscription-card-heading">Тариф</h3>
+            <button type="button" class="btn-text btn-text-accent" id="btnSubscription">Изменить</button>
+          </div>
+          <div class="subscription-plan-row" id="profileSubscriptionRow">
+            <span class="subscription-plan-bar" id="profileSubscriptionBar"></span>
+            <div>
+              <strong id="profileSubscription">Бесплатный</strong>
+              <p class="subscription-period" id="profileSubscriptionPeriod">0 ₽ / навсегда</p>
+            </div>
+          </div>
+        </div>
+        <section class="achievements-section">
+          <h3 class="subsection-title">Достижения</h3>
+          <div class="achievements-grid">
+            <div class="achievement-badge" data-done="true"><span class="achievement-icon">📖</span><span>Учёба</span></div>
+            <div class="achievement-badge" data-done="true"><span class="achievement-icon">📝</span><span>Квизы</span></div>
+            <div class="achievement-badge" data-done="false"><span class="achievement-icon">⭐</span><span>Эксперт</span></div>
+          </div>
+        </section>
+        <button type="button" class="btn-text btn-logout" id="btnLogout">Выйти из аккаунта</button>
+      </div>
+    </main>
+
+    <nav class="tab-bar">
+      <button type="button" class="tab-item active" data-tab="home" aria-label="Главная">
+        <span class="tab-icon tab-icon-home"></span>
+        <span class="tab-label">Главная</span>
+      </button>
+      <button type="button" class="tab-item" data-tab="game" aria-label="Игры">
+        <span class="tab-icon tab-icon-game"></span>
+        <span class="tab-label">Игры</span>
+      </button>
+      <button type="button" class="tab-item" data-tab="education" aria-label="Обучение">
+        <span class="tab-icon tab-icon-edu"></span>
+        <span class="tab-label">Обучение</span>
+      </button>
+      <button type="button" class="tab-item" data-tab="friends" aria-label="Друзья">
+        <span class="tab-icon tab-icon-friends"></span>
+        <span class="tab-label">Друзья</span>
+      </button>
+      <button type="button" class="tab-item" data-tab="profile" aria-label="Профиль">
+        <span class="tab-icon tab-icon-profile"></span>
+        <span class="tab-label">Профиль</span>
+      </button>
+    </nav>
+  </div>
+
+  <div id="headerHelpModal" class="modal hidden" aria-hidden="true">
+    <div class="modal-backdrop" id="headerHelpModalBackdrop"></div>
+    <div class="modal-content modal-help">
+      <h3 class="modal-title">О Рубликсе</h3>
+      <p class="flow-text">Учебное приложение про рынок акций: демо-портфель, котировки MOEX (TQBR), графики, новости и игры. Деньги и сделки — только игровые.</p>
+      <p class="flow-text"><strong>Тарифы</strong> в профиле переключаются без оплаты: от плана зависят число бумаг в ленте, таймфреймы графика, число счетов и дневной лимит викторины.</p>
+      <div class="modal-actions">
+        <button type="button" class="btn-primary" id="headerHelpModalDone">Понятно</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="portfolioAccountsModal" class="modal hidden" aria-hidden="true">
+    <div class="modal-backdrop" id="portfolioAccountsModalBackdrop"></div>
+    <div class="modal-content modal-portfolio-accounts">
+      <h3 class="modal-title">Счета портфеля</h3>
+      <p class="flow-text subtle" style="margin-top:0">Игровые рубли и позиции по счетам. Не реальные деньги.</p>
+      <ul class="portfolio-accounts-list" id="portfolioAccountsModalList"></ul>
+      <button type="button" class="btn-secondary" id="btnCreatePortfolioAccount">+ Новый счёт</button>
+      <div class="modal-actions">
+        <button type="button" class="btn-primary" id="portfolioAccountsModalDone">Закрыть</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="characterModal" class="modal hidden" aria-hidden="true">
+    <div class="modal-backdrop" id="characterModalBackdrop"></div>
+    <div class="modal-content modal-character">
+      <h3 class="modal-title">Внешность</h3>
+      <div class="character-avatar-preview" id="characterAvatarPreview"></div>
+      <div class="character-options" id="characterOptions"></div>
+      <label class="label">Меня зовут</label>
+      <input type="text" class="input" id="characterName" placeholder="Имя персонажа">
+      <div class="modal-actions">
+        <button type="button" class="btn-secondary" id="characterCancel">Отмена</button>
+        <button type="button" class="btn-primary" id="characterSave">Готово</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="subscriptionModal" class="modal hidden" aria-hidden="true">
+    <div class="modal-backdrop" id="subscriptionModalBackdrop"></div>
+    <div class="modal-content modal-subscription">
+      <h3 class="modal-title">Тариф</h3>
+      <p class="subscription-demo-hint">Демо: оплаты нет. Выбери план — так в приложении включатся соответствующие функции (акции, графики, счета, викторина).</p>
+      <div id="subscriptionPlanList"></div>
+      <div class="modal-actions">
+        <button type="button" class="btn-primary" id="subscriptionDone">Готово</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="vendor/lightweight-charts.standalone.production.js"></script>
+  <!-- LOCAL_ONLY: без API. GUEST_ONLY: автоматический «Гость», без экрана входа (см. ensureLocalGuestUser в data.js). -->
+  <script>
+    window.RUBLIKS_LOCAL_ONLY = true;
+    window.RUBLIKS_GUEST_ONLY = true;
+    window.API_BASE_URL = '';
+    try {
+      // Конфигурация API и токен сохраняются между обновлениями страницы.
+    } catch (e) {}
+  </script>
+  <script src="vendor/sql-wasm.js"></script>
+  <script src="js/auth-api.js"></script>
+  <script src="js/db.js"></script>
+  <script src="js/data.js"></script>
+  <script src="js/api.js"></script>
+  <script src="js/chart.js"></script>
+  <script src="js/app.js"></script>
+  <script src="js/dialogs.js"></script>
+</body>
+</html>
