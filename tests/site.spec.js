@@ -221,3 +221,29 @@ test('flat colors and explicitly unavailable features', async ({ page }) => {
   await page.locator('[data-tab="game"]').click();
   await expect(page.locator('.game-hub-title')).toHaveCSS('color', 'rgb(32, 33, 31)');
 });
+
+test('illustrated avatar presets and every appearance slot survive reload', async ({ page }) => {
+  await enter(page);
+  await page.locator('#btnHomeCharacter').click();
+  const preview = page.locator('#characterAvatarPreview svg');
+  await expect(preview).toHaveAttribute('role', 'img');
+  const initial = await preview.innerHTML();
+  await page.getByRole('button', { name: 'Худи и кудри', exact: true }).click();
+  expect(await preview.innerHTML()).not.toBe(initial);
+  for (const key of ['skinTone', 'face', 'hair', 'top', 'bottom', 'shoes', 'accessory']) {
+    const before = await preview.innerHTML();
+    await page.locator('.character-option-row[data-key="' + key + '"]').click();
+    expect(await preview.innerHTML()).not.toBe(before);
+  }
+  await page.locator('#characterSave').click();
+  const saved = await page.evaluate(() => getCharacterAppearance());
+  const homeArt = await page.locator('#homeCharacterAvatar svg').innerHTML();
+  await page.reload({ waitUntil: 'domcontentloaded' });
+  await expect(page.locator('#homeCharacterAvatar svg')).toBeVisible();
+  expect(await page.evaluate(() => getCharacterAppearance())).toEqual(saved);
+  expect(await page.locator('#homeCharacterAvatar svg').innerHTML()).toBe(homeArt);
+  await page.locator('#btnHomeCharacter').click();
+  await page.getByRole('button', { name: 'Кэжуал', exact: true }).click();
+  await page.locator('#characterCancel').click();
+  expect(await page.evaluate(() => getCharacterAppearance())).toEqual(saved);
+});

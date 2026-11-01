@@ -1,0 +1,98 @@
+/* Youthful accents without changing the readable financial data layout. */
+:root {
+  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
+  --color-violet: #583781;
+  --color-grey-ui: #F5F3F7;
+  --radius-sm: 8px;
+  --radius: 10px;
+  --radius-lg: 14px;
+  --radius-btn: 9px;
+}
+body { background: #FFFDFA; }
+.header { background: #FFFDFA; border-bottom-color: #E7E1DD; }
+.header-brand .header-title { font-weight: 800; }
+.brand-caption { color: #776F7C; }
+.tab-bar { background: #FFFDFA; }
+.tab-item.active { color: #583781; font-weight: 650; }
+.tab-item.active::after { border-radius: 2px; }
+.home-intro { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 2px 0 8px; }
+.home-intro > div { min-width: 0; }
+.home-kicker { color: #583781 !important; font-size: 10px !important; font-weight: 700; margin-bottom: 8px !important; }
+.home-intro h2 { font-size: clamp(23px, 4vw, 32px); font-weight: 750; letter-spacing: -.8px; line-height: 1.15; }
+.home-intro p { max-width: 360px; font-size: 12px; line-height: 1.5; color: #77707A; }
+.home-character { flex: 0 0 108px; padding: 0; border: 0; background: #F2EBF8; border-radius: 48% 48% 42% 42%; cursor: pointer; position: relative; }
+.home-character-caption { position: absolute; right: -4px; bottom: 1px; padding: 3px 6px; font-size: 9px; color: #583781; background: #FFDB64; border-radius: 3px; transform: rotate(-7deg); }
+.home-subtabs { border-color: #E7E1DD; }
+.home-subtab.active { font-weight: 650; color: #583781; }
+.hero-portfolio-card { padding: 22px; background: #FFF2C9; border: 1px solid #EDDFB3; border-radius: 14px; }
+.hero-portfolio-sum { font-family: var(--font-sans); font-weight: 650; letter-spacing: -1.5px; }
+.hero-portfolio-label { color: #7E7046; }
+.hero-quick-actions--triple .qa-circle { background: #FFFCF3; border-color: #E0D4B3; border-radius: 8px; }
+.qa-svg { filter: none; }
+.hero-quick-actions--triple .qa-label { font-weight: 550; }
+.hero-portfolio-change { color: #665A36; }
+.home-top-section { background: #F3EDF8; border-radius: 14px; }
+.top-mover-row { border-color: #E3D9EC; }
+.top-mover-row:hover { background: #EDE4F5; }
+.top-mover-rank { color: #9B89AD; }
+.section-title { font-weight: 700; }
+.stocks-scroll, .news-scroll, .topics-grid, .home-shortcuts { border-top-color: #DBD4DF; }
+.stock-chip, .news-card, .topic-card, .shortcut-card { border-bottom-color: #E9E4E9; }
+.stock-chip:hover, .game-card:hover { background: #F8F4FB; }
+.news-card h3 { font-family: var(--font-sans); font-size: 15px; font-weight: 650; }
+.link-all { color: #583781; font-weight: 550; }
+.btn-primary, .auth-submit { border-radius: 9px; background: #583781; font-weight: 650; }
+.btn-primary:hover, .auth-submit:hover { background: #422461; }
+.btn-secondary { border-radius: 9px; }
+.game-hub-title { font-weight: 750; }
+.game-card { padding: 18px 0; }
+.game-card .game-card-icon { width: 40px; height: 40px; border-radius: 10px; background: #F3EDF8 !important; color: #583781 !important; }
+.game-card h3 { font-weight: 650; }
+.quiz-avatar-wrap { background: #F3EDF8; border-color: transparent; }
+.quiz-hero { box-shadow: none; border-radius: 12px; }
+.quiz-question-card { background: white; border-radius: 12px; border-color: #E4DDE8; }
+.quiz-explanation-block { border-radius: 10px; background: #F3EDF8; border-color: #E4DDE8; }
+.profile-card { background: #F3EDF8; border: 0; border-radius: 14px; padding: 18px; }
+.profile-info { min-width: 0; }
+.profile-info strong { font-size: 19px; }
+.friend-own-avatar { flex-shrink: 0; }
+.friend-row.is-me { gap: 10px; }
+.profile-hint { color: #583781; }
+.illustrated-avatar { flex-shrink: 0; display: block; }
+.character-art { display: block; width: 100%; height: 100%; }
+.character-editor-note { font-size: 12px; line-height: 1.5; color: #77707A; margin: 8px 0 14px; }
+.modal-character .character-avatar-preview { display: flex; align-items: center; justify-content: center; margin: 0 auto 12px; border-radius: 0; }
+.modal-character { border-radius: 16px 16px 0 0; }
+.character-presets { display: flex; gap: 6px; justify-content: center; margin: 8px 0 16px; }
+.character-preset { padding: 8px 10px; border: 1px solid #E2D8EC; border-radius: 7px; background: #F6F1FA; color: #583781; font-size: 11px; cursor: pointer; }
+.character-option-row { width: 100%; min-height: 44px; border: 0; border-bottom: 1px solid #EEE8F2; background: white; text-align: left; cursor: pointer; }
+.character-option-row .opt-title { font-size: 10px; color: #77707A; }
+.character-option-row .opt-value { color: #302737; font-size: 12px; }
+.character-option-row:hover, .character-preset:hover { background: #F3EDF8; }
+.modal-character .modal-actions { position: sticky; bottom: -24px; padding: 12px 0; background: white; z-index: 2; }
+.runner-character-inner .character-art { overflow: visible; }
+@media (min-width: 1000px) {
+  .tab-bar { background: #FFFDFA; }
+  .home-intro { align-items: center; }
+  .home-character { margin-right: 16px; }
+  .hero-portfolio-card { padding: 24px; }
+  .home-top-section { padding: 20px !important; }
+  .modal-character { border-radius: 16px; max-width: 680px; display: grid; grid-template-columns: 220px minmax(0, 1fr); column-gap: 20px; row-gap: 8px; }
+  .modal-character .modal-title, .modal-character .character-editor-note { grid-column: 1 / -1; margin-bottom: 4px; }
+  .modal-character .character-avatar-preview { grid-column: 1; grid-row: 3 / 6; align-self: center; }
+  .modal-character .character-presets { grid-column: 1; grid-row: 6; flex-wrap: wrap; align-self: center; margin: 0; }
+  .modal-character .character-options { grid-column: 2; grid-row: 3 / 5; margin: 0; }
+  .modal-character > .label { grid-column: 2; grid-row: 5; margin: 0; }
+  .modal-character > .input { grid-column: 2; grid-row: 6; }
+  .modal-character .modal-actions { grid-column: 1 / -1; grid-row: 7; position: static; margin: 8px 0 0; padding-bottom: 0; }
+}
+@media (max-width: 360px) {
+  .home-character { flex-basis: 90px; }
+  .home-character .illustrated-avatar { width: 90px !important; height: 96px !important; }
+  .home-intro h2 { font-size: 23px; }
+  .hero-portfolio-card { padding: 16px; }
+  .profile-card { gap: 8px; padding: 12px; }
+  .profile-card .illustrated-avatar { width: 102px !important; height: 120px !important; }
+  .profile-info strong { font-size: 17px; }
+  .character-preset { padding: 7px; font-size: 10px; }
+}

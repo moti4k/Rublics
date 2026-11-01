@@ -742,6 +742,7 @@ function renderHomeFavorites() {
 }
 
 function renderHome() {
+  renderCharacterAvatar(document.getElementById('homeCharacterAvatar'), getCharacterAppearance(), 104, { fullBody: true });
   var subMain = document.getElementById('homeSubMain');
   var subFav = document.getElementById('homeSubFav');
   if (subMain) {
@@ -1644,7 +1645,7 @@ function renderQuizStep() {
     (expl || '') +
     '<div class="quiz-options">' + opts + '</div>' + nextBtn + '</div>';
   var wrap = document.getElementById('quizAvatarWrap');
-  if (wrap) renderCharacterAvatar(wrap, appearance, 56);
+  if (wrap) renderCharacterAvatar(wrap, appearance, 56, { emotion: quizState.showExplanation ? (quizState.selected === item.correctAnswerIndex ? 'happy' : 'thinking') : 'neutral' });
   if (!quizState.showExplanation) {
     container.querySelectorAll('.quiz-option').forEach(function (btn) {
       btn.addEventListener('click', function () {
@@ -1951,7 +1952,7 @@ function renderRunner() {
         '<p class="runner-record">Рекорд: ' + runnerEngine.bestScore + '</p>') : '') +
       '<button type="button" class="btn-primary runner-btn-start" id="runnerBtnStart">' + (isOver ? 'Ещё раз' : 'Бежать!') + '</button></div>';
     var av = document.getElementById('runnerStartAvatar');
-    if (av) renderCharacterAvatar(av, getCharacterAppearance(), 90);
+    if (av) renderCharacterAvatar(av, getCharacterAppearance(), 120, { fullBody: true, emotion: isOver ? 'happy' : 'neutral' });
     document.getElementById('runnerBtnStart').addEventListener('click', function () {
       runnerStart();
     });
@@ -1972,7 +1973,7 @@ function renderRunner() {
       var inner = document.createElement('div');
       inner.className = 'runner-character-inner';
       charWrap.appendChild(inner);
-      renderCharacterAvatar(inner, getCharacterAppearance(), 72);
+      renderCharacterAvatar(inner, getCharacterAppearance(), 72, { fullBody: true });
     }
     var area = document.getElementById('runnerGameArea');
     area.addEventListener('click', function (e) { e.preventDefault(); runnerJump(); });
@@ -2251,9 +2252,11 @@ function renderFriends() {
     var isMe = f.id === 'me';
     return '<div class="friend-row ' + (rank <= 3 ? 'rank-' + rank : '') + (isMe ? ' is-me' : '') + '">' +
       '<span class="friend-rank">' + rank + '</span>' +
+      (isMe ? '<span class="friend-own-avatar" id="friendsOwnAvatar"></span>' : '') +
       '<div><span class="friend-name">' + escapeHtml(f.name) + (isMe ? ' <span class="friend-me-label">(Вы)</span>' : '') + '</span></div>' +
       '<span class="friend-value">' + valueText + '</span></div>';
   }).join('');
+  renderCharacterAvatar(document.getElementById('friendsOwnAvatar'), getCharacterAppearance(), 36);
 }
 
 function renderProfile() {
@@ -2270,83 +2273,13 @@ function renderProfile() {
   document.getElementById('profileSubscription').textContent = plan.name;
   document.getElementById('profileSubscriptionPeriod').textContent = plan.price + ' / ' + plan.period;
   document.getElementById('profileSubscriptionBar').style.background = plan.color;
-  renderCharacterAvatar(document.getElementById('profileAvatar'), getCharacterAppearance(), 80);
+  renderCharacterAvatar(document.getElementById('profileAvatar'), getCharacterAppearance(), 128, { fullBody: true });
   var progressStats = getUserStats();
   document.querySelectorAll('.achievement-badge').forEach(function (badge, index) {
     badge.dataset.done = String(index === 0 ? progressStats.videosWatched > 0 : index === 1 ? progressStats.quizCorrectCount > 0 : progressStats.quizCorrectCount >= 50);
   });
 }
 
-function renderCharacterAvatar(container, appearance, size) {
-  if (!container) return;
-  size = size || 80;
-  var s = size;
-  var skinColors = ['#fff5d1', '#f2c79e', '#c2997a'];
-  var hairColors = ['#59381e', '#40260d', '#8b5a33', '#804d26', '#664026', '#996640'];
-  var topColors = ['#5991f2', '#fafafa', '#5e3e8f', '#665980', '#338066'];
-  var bottomColors = ['#38528c', '#333333', '#727880', '#805980', '#596673'];
-  var shoesColors = ['#666666', '#473428', '#262626', '#403433', '#996640'];
-  var skin = skinColors[appearance.skinToneIndex % 3] || skinColors[0];
-  var hair = hairColors[appearance.hairIndex % 6] || hairColors[0];
-  var top = topColors[appearance.topIndex % 5] || topColors[0];
-  var bottom = bottomColors[appearance.bottomIndex % 5] || bottomColors[0];
-  var shoes = shoesColors[appearance.shoesIndex % 5] || shoesColors[0];
-  var faceIdx = appearance.faceIndex % 5;
-  var hairIdx = appearance.hairIndex % 6;
-  var accIdx = appearance.accessoryIndex % 4;
-  var hw = s * 0.38;
-  var hh = s * 0.36;
-  var cx = s / 2;
-  var faceX = cx - hw / 2;
-  var faceY = s * 0.22 - hh / 2;
-  var faceShape = faceIdx === 0 ? ('<ellipse cx="' + cx + '" cy="' + (s * 0.22) + '" rx="' + (hw / 2) + '" ry="' + (hh / 2) + '" fill="' + skin + '"/>')
-    : faceIdx === 1 ? ('<ellipse cx="' + cx + '" cy="' + (s * 0.22) + '" rx="' + (hw * 0.45) + '" ry="' + (hh * 0.55) + '" fill="' + skin + '"/>')
-    : faceIdx === 2 ? ('<rect x="' + faceX + '" y="' + faceY + '" width="' + hw + '" height="' + hh + '" rx="' + (hw * 0.25) + '" fill="' + skin + '"/>')
-    : faceIdx === 3 ? ('<ellipse cx="' + cx + '" cy="' + (s * 0.22) + '" rx="' + (hw * 0.52) + '" ry="' + (hh * 0.47) + '" fill="' + skin + '"/>')
-    : ('<rect x="' + faceX + '" y="' + faceY + '" width="' + hw + '" height="' + hh + '" rx="' + (hw * 0.35) + '" fill="' + skin + '"/>');
-  var hairW = s * 0.42;
-  var hairH = s * 0.2;
-  var hairY = s * 0.01;
-  var hairShape = hairIdx === 0 ? ('<rect x="' + (cx - hairW / 2) + '" y="' + hairY + '" width="' + hairW + '" height="' + (hairH * 0.7) + '" rx="4" fill="' + hair + '"/>')
-    : hairIdx === 1 ? ('<g fill="' + hair + '">' + [0, 1, 2, 3, 4].map(function (i) { return '<rect x="' + (cx - hairW * 0.25) + '" y="' + (hairY + i * 4) + '" width="' + (hairW * 0.5) + '" height="4" rx="2"/>'; }).join('') + '</g>')
-    : hairIdx === 2 ? ('<rect x="' + (cx - hairW * 0.55) + '" y="' + hairY + '" width="' + (hairW * 1.1) + '" height="' + hairH + '" rx="6" fill="' + hair + '"/>')
-    : hairIdx === 3 ? ('<ellipse cx="' + cx + '" cy="' + (hairY + hairH * 0.7) + '" rx="' + (hairW * 0.45) + '" ry="' + (hairH * 0.7) + '" fill="' + hair + '"/>')
-    : hairIdx === 4 ? ('<ellipse cx="' + cx + '" cy="' + (hairY + hairH * 0.8) + '" rx="' + (hairW * 0.2) + '" ry="' + (hairH * 0.8) + '" fill="' + hair + '"/>')
-    : ('<ellipse cx="' + cx + '" cy="' + (hairY + hairH / 2) + '" rx="' + (hairW / 2) + '" ry="' + (hairH / 2) + '" fill="' + hair + '"/>');
-  var neck = '<rect x="' + (cx - s * 0.06) + '" y="' + (s * 0.38) + '" width="' + (s * 0.12) + '" height="' + (s * 0.08) + '" rx="2" fill="' + skin + '"/>';
-  var torso = '<rect x="' + (cx - s * 0.25) + '" y="' + (s * 0.46) + '" width="' + (s * 0.5) + '" height="' + (s * 0.28) + '" rx="6" fill="' + top + '" stroke="#ddd" stroke-width="0.5"/>';
-  var legW = s * 0.18;
-  var legH = s * 0.22;
-  var legY = s * 0.72;
-  var legs = '<rect x="' + (cx - legW - s * 0.04) + '" y="' + legY + '" width="' + legW + '" height="' + legH + '" rx="3" fill="' + bottom + '"/>' +
-    '<rect x="' + (cx + s * 0.04) + '" y="' + legY + '" width="' + legW + '" height="' + legH + '" rx="3" fill="' + bottom + '"/>';
-  var shoeY = legY + legH;
-  var shoeW = s * 0.2;
-  var shoeH = s * 0.08;
-  var shoeGap = s * 0.12;
-  var shoes = '<rect x="' + (cx - shoeW - shoeGap / 2) + '" y="' + shoeY + '" width="' + shoeW + '" height="' + shoeH + '" rx="2" fill="' + shoes + '"/>' +
-    '<rect x="' + (cx + shoeGap / 2) + '" y="' + shoeY + '" width="' + shoeW + '" height="' + shoeH + '" rx="2" fill="' + shoes + '"/>';
-  var acc = '';
-  if (accIdx === 0) {
-    acc = '<circle cx="' + (cx + s * 0.32) + '" cy="' + (s * 0.28) + '" r="' + (s * 0.1) + '" fill="none" stroke="#5e3e8f" stroke-width="2"/>';
-  } else if (accIdx === 1) {
-    acc = '<rect x="' + (cx - s * 0.175) + '" y="' + (s * 0.14) + '" width="' + (s * 0.35) + '" height="' + (s * 0.12) + '" rx="4" fill="none" stroke="#5e3e8f" stroke-width="2"/>';
-  } else if (accIdx === 2) {
-    acc = '<circle cx="' + (cx - s * 0.3) + '" cy="' + (s * 0.18) + '" r="' + (s * 0.075) + '" fill="#4d4d4d"/>' +
-      '<circle cx="' + (cx + s * 0.3) + '" cy="' + (s * 0.18) + '" r="' + (s * 0.075) + '" fill="#4d4d4d"/>';
-  }
-  var bg = 'rgba(146, 118, 178, 0.15)';
-  var svg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ' + s + ' ' + s + '" width="' + s + '" height="' + s + '">' +
-    '<circle cx="' + cx + '" cy="' + (s / 2) + '" r="' + (s / 2) + '" fill="' + bg + '"/>' +
-    legs + shoes + torso + neck + faceShape + hairShape + acc +
-    '</svg>';
-  container.innerHTML = svg;
-  container.style.width = s + 'px';
-  container.style.height = s + 'px';
-  container.style.display = 'block';
-  container.style.borderRadius = '50%';
-  container.style.overflow = 'hidden';
-}
 
 document.getElementById('btnAddFriend').addEventListener('click', function () {
   var email = (document.getElementById('friendEmail') && document.getElementById('friendEmail').value || '').trim();
@@ -2502,7 +2435,8 @@ function openCharacterModal() {
     var arr = CHARACTER_OPTIONS[key];
     var prop = key === 'skinTone' ? 'skinToneIndex' : key + 'Index';
     var idx = app[prop] != null ? app[prop] : 0;
-    var row = document.createElement('div');
+    var row = document.createElement('button');
+    row.type = 'button';
     row.className = 'character-option-row';
     row.dataset.key = key;
     row.innerHTML = '<span class="opt-title">' + titles[key] + '</span><span class="opt-value">' + escapeHtml(arr[idx]) + '</span><span class="opt-chevron">›</span>';
@@ -2511,15 +2445,32 @@ function openCharacterModal() {
       var next = (cur + 1) % arr.length;
       app[prop] = next;
       row.querySelector('.opt-value').textContent = arr[next];
-      renderCharacterAvatar(document.getElementById('characterAvatarPreview'), app, 120);
+      renderCharacterAvatar(document.getElementById('characterAvatarPreview'), app, 200, { fullBody: true });
     });
     optsEl.appendChild(row);
   });
-  renderCharacterAvatar(document.getElementById('characterAvatarPreview'), app, 120);
+  renderCharacterAvatar(document.getElementById('characterAvatarPreview'), app, 200, { fullBody: true });
+  document.querySelectorAll('.character-preset').forEach(function (button) {
+    button.onclick = function () {
+      var presets = [
+        { hairIndex: 0, topIndex: 0, bottomIndex: 0, shoesIndex: 0, accessoryIndex: 0 },
+        { hairIndex: 5, topIndex: 3, bottomIndex: 4, shoesIndex: 2, accessoryIndex: 2 },
+        { hairIndex: 2, topIndex: 4, bottomIndex: 0, shoesIndex: 0, accessoryIndex: 1 }
+      ];
+      Object.assign(app, presets[Number(button.dataset.preset)]);
+      optsEl.querySelectorAll('.character-option-row').forEach(function (row) {
+        var key = row.dataset.key;
+        var prop = key === 'skinTone' ? 'skinToneIndex' : key + 'Index';
+        row.querySelector('.opt-value').textContent = CHARACTER_OPTIONS[key][app[prop] || 0];
+      });
+      renderCharacterAvatar(document.getElementById('characterAvatarPreview'), app, 200, { fullBody: true, emotion: 'happy' });
+    };
+  });
   document.getElementById('characterModal').classList.remove('hidden');
 }
 
 document.getElementById('profileCard').addEventListener('click', openCharacterModal);
+document.getElementById('btnHomeCharacter').addEventListener('click', openCharacterModal);
 document.getElementById('characterCancel').addEventListener('click', function () {
   document.getElementById('characterModal').classList.add('hidden');
 });
@@ -2539,6 +2490,7 @@ document.getElementById('characterSave').addEventListener('click', function () {
   setCharacterAppearance(app);
   document.getElementById('characterModal').classList.add('hidden');
   renderProfile();
+  renderHome();
 });
 
 // ——— Subscription modal ———

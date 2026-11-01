@@ -14,6 +14,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,400;0,500;0,600;0,700;0,800;1,600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/style.css">
   <link rel="stylesheet" href="css/design.css">
+  <link rel="stylesheet" href="css/teen.css">
 </head>
 <body>
   <div id="auth-screen" class="auth-screen hidden">
@@ -57,7 +58,7 @@
 
     <main class="main">
       <div id="screen-home" class="screen active">
-        <div class="home-intro"><h2>Обзор счёта</h2><p>Деньги и сделки в приложении — учебные.</p></div>
+        <div class="home-intro"><div><p class="home-kicker">Рубликс — опыт без потерь</p><h2>Твой учебный счёт</h2><p>Покупай акции на учебные деньги и смотри, что получится.</p></div><button type="button" class="home-character" id="btnHomeCharacter" aria-label="Изменить своего персонажа"><span id="homeCharacterAvatar"></span><span class="home-character-caption">Это ты ↗</span></button></div>
         <div class="home-subtabs" role="tablist">
           <button type="button" class="home-subtab active" id="homeSubMain" role="tab" aria-selected="true">Главная</button>
           <button type="button" class="home-subtab" id="homeSubFav" role="tab" aria-selected="false">Избранное</button>
@@ -613,8 +614,14 @@
   <div id="characterModal" class="modal hidden" aria-hidden="true">
     <div class="modal-backdrop" id="characterModalBackdrop"></div>
     <div class="modal-content modal-character">
-      <h3 class="modal-title">Внешность</h3>
+      <h3 class="modal-title">Твой персонаж</h3>
+      <p class="character-editor-note">Меняй детали и собирай свой образ. Всё это — без оплаты.</p>
       <div class="character-avatar-preview" id="characterAvatarPreview"></div>
+      <div class="character-presets" id="characterPresets" aria-label="Готовые образы">
+        <button type="button" class="character-preset" data-preset="0">Кэжуал</button>
+        <button type="button" class="character-preset" data-preset="1">Худи и кудри</button>
+        <button type="button" class="character-preset" data-preset="2">Каре и кеды</button>
+      </div>
       <div class="character-options" id="characterOptions"></div>
       <label class="label">Меня зовут</label>
       <input type="text" class="input" id="characterName" placeholder="Имя персонажа">
@@ -653,6 +660,7 @@
   <script src="js/data.js"></script>
   <script src="js/api.js"></script>
   <script src="js/chart.js"></script>
+  <script src="js/avatar.js"></script>
   <script src="js/app.js"></script>
   <script src="js/dialogs.js"></script>
 </body>
