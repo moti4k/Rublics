@@ -848,7 +848,7 @@ function renderHome() {
       const changeClass = ch >= 0 ? 'up' : 'down';
       const priceStr = s.price >= 1000 ? s.price.toFixed(0) : s.price.toFixed(2);
       return `<a href="#" class="stock-chip" data-ticker="${escapeHtml(s.ticker)}">
-      <span class="ticker">${escapeHtml(s.ticker)}</span>
+      <span class="stock-identity"><span class="ticker">${escapeHtml(s.ticker)}</span><span class="stock-company">${escapeHtml(s.name || s.ticker)}</span></span>
       <span class="price">${priceStr} ₽</span>
       <span class="change ${changeClass}">${ch >= 0 ? '+' : ''}${ch.toFixed(1)}%</span>
     </a>`;

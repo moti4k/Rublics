@@ -219,5 +219,5 @@ test('flat colors and explicitly unavailable features', async ({ page }) => {
   expect(backgrounds.every(bg => !bg.includes('gradient'))).toBe(true);
   await expect(page.locator('[data-inst="bonds"]')).toBeDisabled();
   await page.locator('[data-tab="game"]').click();
-  await expect(page.locator('.game-hub-title')).toHaveCSS('color', 'rgb(23, 29, 43)');
+  await expect(page.locator('.game-hub-title')).toHaveCSS('color', 'rgb(32, 33, 31)');
 });

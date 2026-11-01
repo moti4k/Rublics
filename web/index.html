@@ -49,7 +49,7 @@
   <div id="app" class="main-app">
     <header class="header header-brand">
       <div class="header-brand-row">
-        <h1 class="header-title"><span class="brand-mark" aria-hidden="true">₽</span>Рубликс</h1>
+        <h1 class="header-title">Рубликс<span class="brand-caption">учебные инвестиции</span></h1>
         <button type="button" class="btn-help" id="btnHeaderHelp" aria-label="О приложении" title="О приложении">?</button>
       </div>
       <p class="header-quotes-meta" id="quotesRefreshLabel" aria-live="polite"></p>
@@ -57,7 +57,7 @@
 
     <main class="main">
       <div id="screen-home" class="screen active">
-        <div class="home-intro"><p class="home-eyebrow">Твоя практика инвестиций</p><h2>Опыт без потерь.</h2><p>Пробуй, ошибайся и разбирайся в рынке. <br>Здесь все деньги — учебные.</p></div>
+        <div class="home-intro"><h2>Обзор счёта</h2><p>Деньги и сделки в приложении — учебные.</p></div>
         <div class="home-subtabs" role="tablist">
           <button type="button" class="home-subtab active" id="homeSubMain" role="tab" aria-selected="true">Главная</button>
           <button type="button" class="home-subtab" id="homeSubFav" role="tab" aria-selected="false">Избранное</button>
@@ -126,12 +126,9 @@
             </div>
             <div class="stocks-scroll" id="stocksList"></div>
           </section>
-          <section class="home-stories-section" aria-label="Сторис">
-            <div class="home-stories-scroll" id="homeStoriesStrip"></div>
-          </section>
           <section class="news-section news-section-first">
             <div class="section-row">
-              <h2 class="section-title">Сейчас важно</h2>
+              <h2 class="section-title">Почитать о рынке</h2>
               <a href="#" class="link-all" id="linkAllNews">Все материалы</a>
             </div>
             <div class="news-scroll" id="newsCarousel"></div>
@@ -139,12 +136,12 @@
           <section class="home-shortcuts">
             <a href="#" class="shortcut-card" id="linkShortcutEdu">
               <span class="shortcut-icon shortcut-svg-edu" aria-hidden="true"></span>
-              <div><strong>Разобраться в рынке</strong><p>Короткие уроки и понятные примеры</p></div>
+              <div><strong>Учебные материалы</strong><p>Основы инвестиций и устройство рынка</p></div>
               <span class="chevron">›</span>
             </a>
             <a href="#" class="shortcut-card" id="linkShortcutGames">
               <span class="shortcut-icon shortcut-svg-game" aria-hidden="true"></span>
-              <div><strong>Проверить себя</strong><p>Финансовые игры на пару минут</p></div>
+              <div><strong>Практика</strong><p>Квизы и финансовые задачи</p></div>
               <span class="chevron">›</span>
             </a>
             <a href="#" class="shortcut-card" id="linkParentReport">
@@ -154,7 +151,7 @@
             </a>
           </section>
           <section class="topics-section">
-            <h2 class="section-title">Разбираем по темам</h2>
+            <h2 class="section-title">Справочник</h2>
             <div class="topics-grid" id="topicsGrid"></div>
           </section>
           <section class="holdings-section" id="holdingsSection">
