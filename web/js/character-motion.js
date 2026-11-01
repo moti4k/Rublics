@@ -5,6 +5,7 @@
   const active = new Map();
   const rigs = new WeakMap();
   const greeted = new WeakSet();
+  const speaking = new Map();
   const neutral = { x: 0, y: 0, turn: 0, sx: 1, sy: 1, head: 0, left: 0, right: 0,
     footLeft: 0, footRight: 0, blink: 1, coin: 0, coinX: 0, coinY: 0,
     receipt: 0, receiptY: 0, sweat: 0, sweatY: 0, stars: 0 };
@@ -24,11 +25,18 @@
     relief: [[0, {}], [.24, { head: 8, right: -155, sweat: 1 }], [.5, { head: -7, right: -140, sweat: 1, sweatY: 18 }], [.75, { y: 4, sy: .98, sweatY: 35 }], [1, {}]],
     bump: [[0, {}], [.2, { x: -5, turn: -10, head: 15, left: 40, right: -50, stars: 1 }], [.45, { turn: 5, head: -8, stars: .6 }], [.7, { head: 4 }], [1, {}]],
     jump: [[0, {}], [.2, { left: 65, right: -65, head: -8, footLeft: 12, footRight: -12 }], [.65, { left: 30, right: -30, head: 3 }], [1, {}]],
-    coin: [[0, {}], [.2, { right: -35, coin: 1, coinY: -25, head: -4 }], [.55, { right: 40, coin: 1, coinX: -50, coinY: 22 }], [.8, { coinX: -50, coinY: 30 }], [1, {}]]
+    coin: [[0, {}], [.2, { right: -35, coin: 1, coinY: -25, head: -4 }], [.55, { right: 40, coin: 1, coinX: -50, coinY: 22 }], [.8, { coinX: -50, coinY: 30 }], [1, {}]],
+    point: [[0, {}], [.2, { turn: -3, head: -5 }], [.45, { right: -65, head: 4, left: 12 }], [.7, { right: -58, head: -3 }], [1, {}]],
+    tap: [[0, {}], [.2, { x: -3, right: 15 }], [.45, { x: 7, turn: -4, right: -70, head: -4 }], [.6, { x: 3, right: -52 }], [.8, { right: -65, head: 3 }], [1, {}]],
+    explain: [[0, {}], [.25, { right: -50, head: 5 }], [.5, { right: -35, left: 22, head: -4 }], [.75, { right: -50, head: 5 }], [1, {}]],
+    peek: [[0, {}], [.25, { x: 8, turn: 7, head: -10 }], [.55, { x: 10, turn: 8, head: -5, blink: .2 }], [.8, { x: 4, head: -7 }], [1, {}]],
+    proud: [[0, {}], [.25, { left: -25, right: 28, sy: 1.02, head: -7 }], [.55, { left: -20, right: 22, head: 4 }], [.8, { head: -4 }], [1, {}]],
+    count: [[0, {}], [.2, { right: -110, head: -4 }], [.4, { right: -95, head: 4 }], [.6, { right: -110, head: -4 }], [.8, { right: -95, head: 4 }], [1, {}]]
   };
   const durations = { welcome: 1350, buy: 1300, sell: 1300, correct: 1050, think: 1450,
     pose: 1200, hair: 1150, shuffle: 1200, watch: 1300, groove: 1350, victory: 1550,
-    careful: 1200, relief: 1400, bump: 650, jump: 650, coin: 600 };
+    careful: 1200, relief: 1400, bump: 650, jump: 650, coin: 600,
+    point: 1200, tap: 1000, explain: 1450, peek: 1300, proud: 1400, count: 1300 };
   let dock, dockAvatar, dockText, hideTimer, entrance, targetEffect;
   let anchor = null, previousFocus = null;
 
@@ -37,7 +45,7 @@
     if (!svg) return null;
     if (!rigs.has(svg)) {
       const parts = {};
-      ['actor', 'head', 'arm-left', 'arm-right', 'foot-left', 'foot-right', 'eyes', 'coin', 'receipt', 'sweat', 'stars'].forEach(name => {
+      ['actor', 'head', 'arm-left', 'arm-right', 'foot-left', 'foot-right', 'eyes', 'coin', 'receipt', 'sweat', 'stars', 'mouth-rest', 'mouth-talk', 'mouth-opening', 'mouth-teeth'].forEach(name => {
         parts[name] = svg.querySelector('.char-' + name);
       });
       rigs.set(svg, parts);
@@ -99,7 +107,7 @@
     container.dataset.motion = type;
     function tick(now) {
       if (!container.isConnected || !container.getClientRects().length || reduced.matches) { stop(container); return; }
-      const progress = Math.min(1, (now - state.start) / durations[type]);
+      const progress = Math.max(0, Math.min(1, (now - state.start) / durations[type]));
       apply(parts, frame(type, progress));
       if (progress < 1) state.raf = requestAnimationFrame(tick);
       else stop(container);
@@ -113,7 +121,7 @@
     dock.className = 'character-reaction';
     dock.hidden = true;
     dock.setAttribute('aria-label', 'Реакция персонажа');
-    dock.innerHTML = '<div class="character-reaction-art" aria-hidden="true"></div><p class="character-reaction-text" role="status" aria-live="polite" aria-atomic="true"></p><button type="button" class="character-reaction-close" aria-label="Скрыть реакцию персонажа">×</button>';
+    dock.innerHTML = '<div class="character-reaction-art" aria-hidden="true"></div><p class="character-reaction-text speech-bubble" role="status" aria-live="polite" aria-atomic="true"></p><button type="button" class="character-reaction-close" aria-label="Скрыть реакцию персонажа">×</button>';
     document.body.appendChild(dock);
     dockAvatar = dock.querySelector('.character-reaction-art');
     dockText = dock.querySelector('.character-reaction-text');
@@ -149,16 +157,24 @@
     if (entrance) { entrance.cancel(); entrance = null; }
     if (targetEffect) { targetEffect.cancel(); targetEffect = null; }
     Array.from(active.keys()).forEach(stop);
+    Array.from(speaking.keys()).forEach(stopSpeech);
     if (dock) { dock.hidden = true; dockText.textContent = ''; }
     anchor = null;
     if (restoreFocus && restoreFocus.isConnected && restoreFocus.getClientRects().length) restoreFocus.focus({ preventScroll: true });
     previousFocus = null;
+  }
+  function dismissFloating() {
+    clearTimeout(hideTimer);
+    if (entrance) { entrance.cancel(); entrance = null; }
+    if (targetEffect) { targetEffect.cancel(); targetEffect = null; }
+    if (dock) { dock.hidden = true; dockText.textContent = ''; stop(dockAvatar); stopSpeech(dockAvatar); }
   }
   function react(type, options) {
     if (document.hidden) return;
     options = options || {};
     const target = typeof options.anchor === 'string' ? document.querySelector(options.anchor) : options.anchor;
     if (target && !target.getClientRects().length) return;
+    if (!options.floating && global.companion && global.companion.respond(type, options)) return;
     ensureDock();
     clear();
     anchor = target;
@@ -171,6 +187,7 @@
     dockText.textContent = options.text || '';
     position();
     play(dockAvatar, type);
+    speak(dockAvatar, options.text || '');
     if (!reduced.matches) entrance = dock.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 160 });
     if (!reduced.matches && target && target.tagName === 'BUTTON') {
       targetEffect = target.animate([{ transform: 'translateY(0)' }, { transform: 'translateY(2px)', offset: .35 }, { transform: 'translateY(0)' }], { delay: 300, duration: 360 });
@@ -191,12 +208,53 @@
       head: crouching ? 10 : -3, left: airborne ? 55 : stride * 28,
       right: airborne ? -55 : -stride * 28, footLeft: stride * 12, footRight: -stride * 12 });
   }
-  global.characterMotion = { play, react, stop, clear, greet, runStep };
+  function stopSpeech(container) {
+    const state = speaking.get(container);
+    if (state) {
+      cancelAnimationFrame(state.raf);
+      speaking.delete(container);
+      if (state.progress) state.progress(1);
+    }
+    const parts = rig(container);
+    if (parts) {
+      if (parts['mouth-rest']) parts['mouth-rest'].setAttribute('opacity', '1');
+      if (parts['mouth-talk']) parts['mouth-talk'].setAttribute('opacity', '0');
+    }
+    if (container) delete container.dataset.speaking;
+  }
+  function speak(container, text, progress) {
+    stopSpeech(container);
+    const parts = rig(container);
+    const letters = Array.from(String(text || '').trim());
+    if (!parts || !letters.length || reduced.matches || document.hidden) { if (progress) progress(1); return; }
+    const state = { start: performance.now(), duration: Math.min(4200, Math.max(1100, letters.length * 30)), raf: null, progress };
+    speaking.set(container, state);
+    container.dataset.speaking = 'true';
+    function tick(now) {
+      if (!container.isConnected || !container.getClientRects().length || reduced.matches) { stopSpeech(container); return; }
+      const t = Math.max(0, Math.min(1, (now - state.start) / state.duration));
+      const char = letters[Math.min(letters.length - 1, Math.floor(t * letters.length))].toLowerCase();
+      const open = !/[\s.,!?;:—мбп]/.test(char);
+      const round = /[оуёю]/.test(char);
+      const beat = .45 + .55 * Math.abs(Math.sin((now - state.start) / 95));
+      parts['mouth-rest'].setAttribute('opacity', open ? '0' : '1');
+      parts['mouth-talk'].setAttribute('opacity', open ? '1' : '0');
+      parts['mouth-opening'].setAttribute('rx', round ? 3.5 : 5 + beat * 3);
+      parts['mouth-opening'].setAttribute('ry', round ? 3 + beat * 3 : 1.5 + beat * 3);
+      parts['mouth-teeth'].setAttribute('opacity', round ? '0' : '1');
+      if (progress) progress(t);
+      if (t < 1) state.raf = requestAnimationFrame(tick);
+      else stopSpeech(container);
+    }
+    state.raf = requestAnimationFrame(tick);
+  }
+  global.characterMotion = { play, react, stop, clear, greet, runStep, speak, stopSpeech, dismissFloating };
   reduced.addEventListener('change', function () {
     // Preference changes stop movement without erasing a newly announced result.
     if (entrance) { entrance.cancel(); entrance = null; }
     if (targetEffect) { targetEffect.cancel(); targetEffect = null; }
     Array.from(active.keys()).forEach(stop);
+    Array.from(speaking.keys()).forEach(stopSpeech);
     document.querySelectorAll('.illustrated-avatar').forEach(stop);
   });
   document.addEventListener('visibilitychange', function () { if (document.hidden) clear(); });

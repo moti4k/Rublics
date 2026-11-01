@@ -75,7 +75,8 @@ function showAuth(show) {
 function showScreen(id) {
   if (!document.getElementById('screen-' + id)) return;
   characterMotion.clear();
-  if (id !== 'runner' && typeof runnerEngine !== 'undefined' && runnerEngine.phase === 'playing') {
+  companion.leave();
+  if (id !== 'runner' && typeof runnerEngine !== 'undefined' && ['playing', 'paused'].includes(runnerEngine.phase)) {
     runnerStopLoop();
     runnerEngine.phase = 'start';
   }
@@ -133,6 +134,7 @@ function showScreen(id) {
     updateSecurityChrome();
     setTimeout(function () { loadChart(false); }, 40);
   }
+  companion.enter(id);
 }
 
 function openSecurityScreen(ticker) {
@@ -506,6 +508,9 @@ var victorinaQStart = 0;
 var victorinaLocked = false;
 var victorinaExplainTimer = null;
 var victorinaRoundFinished = false;
+var victorinaPaused = false;
+var victorinaPauseStart = 0;
+var victorinaRunId = 0;
 
 function clearVictorinaTimers() {
   if (victorinaTimer) {
@@ -522,11 +527,13 @@ function startVictorinaGame() {
   var limit = typeof getVictorinaDailyLimitForSubscription === 'function' ? getVictorinaDailyLimitForSubscription() : 5;
   if (getVictorinaPlaysToday() >= limit) return;
   victorinaDeck = pickVictorinaDeck(10);
+  victorinaRunId++;
   victorinaIdx = 0;
   victorinaCorrect = 0;
   victorinaTimeMs = 0;
   victorinaLocked = false;
   victorinaRoundFinished = false;
+  victorinaPaused = false;
   clearVictorinaTimers();
   showScreen('victorina-game');
   showVictorinaQuestion();
@@ -535,6 +542,12 @@ function startVictorinaGame() {
 function showVictorinaQuestion() {
   clearVictorinaTimers();
   victorinaLocked = false;
+  victorinaPaused = false;
+  document.getElementById('btnVictorinaNext').classList.add('hidden');
+  document.getElementById('victorinaPausedNote').classList.add('hidden');
+  document.getElementById('btnVictorinaPause').disabled = false;
+  document.getElementById('btnVictorinaPause').textContent = 'Пауза';
+  document.getElementById('btnVictorinaPause').setAttribute('aria-pressed', 'false');
   var ex = document.getElementById('victorinaExplain');
   if (ex) {
     ex.classList.add('hidden');
@@ -548,6 +561,8 @@ function showVictorinaQuestion() {
   var labels = DATA.victorinaLabels || ['Вырастет', 'Упадёт', 'Без сильных изменений'];
   document.getElementById('victorinaProgress').textContent = (victorinaIdx + 1) + '/10';
   document.getElementById('victorinaText').textContent = q.text;
+  document.getElementById('victorinaScore').textContent = 'Верно: ' + victorinaCorrect + ' · цель: 7 из 10';
+  companion.say(document.getElementById('buddy-victorina-game'), 'Прочитай новость на плашке. Кому она поможет, а кому добавит проблем?', 'point', '#victorinaText');
   document.getElementById('btnVictorina0').textContent = '↗ ' + labels[0];
   document.getElementById('btnVictorina1').textContent = '↘ ' + labels[1];
   document.getElementById('btnVictorina2').textContent = '→ ' + labels[2];
@@ -562,6 +577,7 @@ function showVictorinaQuestion() {
   document.getElementById('victorinaTimer').textContent = String(victorinaSecsLeft);
   victorinaQStart = Date.now();
   victorinaTimer = setInterval(function () {
+    if (victorinaPaused || document.hidden) return;
     victorinaSecsLeft -= 1;
     document.getElementById('victorinaTimer').textContent = String(Math.max(0, victorinaSecsLeft));
     if (victorinaSecsLeft <= 0) {
@@ -572,7 +588,7 @@ function showVictorinaQuestion() {
 }
 
 function onVictorinaAnswer(choiceIndex, fromTimeout) {
-  if (victorinaLocked) return;
+  if (victorinaLocked || victorinaPaused) return;
   victorinaLocked = true;
   clearVictorinaTimers();
   victorinaTimeMs += Date.now() - victorinaQStart;
@@ -596,21 +612,35 @@ function onVictorinaAnswer(choiceIndex, fromTimeout) {
     ex.textContent = prefix + q.explanation;
     ex.classList.remove('hidden');
   }
-  var delay = ok ? 1000 : 3200;
-  characterMotion.react(ok ? 'correct' : 'think', {
-    anchor: '#victorinaExplain', duration: ok ? 900 : 2400,
-    text: ok ? 'Дай пять! Логика на месте.' : (fromTimeout ? 'Часы убежали. Я тоже не догнал.' : 'Почешем затылок и разберёмся.')
-  });
-  if (q.explanation && String(q.explanation).length > 140) delay += 600;
-  victorinaExplainTimer = setTimeout(function () {
-    victorinaIdx += 1;
-    showVictorinaQuestion();
-  }, delay);
+  document.getElementById('btnVictorinaPause').disabled = true;
+  document.getElementById('btnVictorinaNext').classList.remove('hidden');
+  document.getElementById('btnVictorinaNext').textContent = victorinaIdx === 9 ? 'Результат →' : 'Дальше →';
+  document.getElementById('victorinaScore').textContent = 'Верно: ' + victorinaCorrect + ' · цель: 7 из 10';
+  companion.say(document.getElementById('buddy-victorina-game'),
+    (ok ? 'Связь найдена! ' : fromTimeout ? 'Время вышло. ' : 'Разберёмся. ') + q.explanation,
+    ok ? 'correct' : 'explain', '#victorinaText');
+  document.getElementById('btnVictorinaNext').focus({ preventScroll: true });
+}
+
+function pauseVictorina(force) {
+  if (victorinaLocked || !document.getElementById('screen-victorina-game').classList.contains('active')) return;
+  var paused = typeof force === 'boolean' ? force : !victorinaPaused;
+  if (paused === victorinaPaused) return;
+  victorinaPaused = paused;
+  if (paused) victorinaPauseStart = Date.now();
+  else victorinaQStart += Date.now() - victorinaPauseStart;
+  document.getElementById('btnVictorinaPause').textContent = paused ? 'Продолжить' : 'Пауза';
+  document.getElementById('btnVictorinaPause').setAttribute('aria-pressed', String(paused));
+  document.getElementById('victorinaPausedNote').classList.toggle('hidden', !paused);
+  [0, 1, 2].forEach(i => { document.getElementById('btnVictorina' + i).disabled = paused; });
+  companion.say(document.getElementById('buddy-victorina-game'), paused ? 'Стоп-кадр. Таймер подождёт — подумай спокойно или сделай перерыв.' : 'Продолжаем с того же места. Смотри на новость, а не только на таймер.', paused ? 'careful' : 'point', '#victorinaText');
 }
 
 function finishVictorinaRound() {
   if (victorinaRoundFinished) return;
   victorinaRoundFinished = true;
+  var roundCorrect = victorinaCorrect;
+  var roundId = victorinaRunId;
   clearVictorinaTimers();
   var won = victorinaCorrect >= 7;
   var timeSec = Math.max(1, Math.round(victorinaTimeMs / 1000));
@@ -620,20 +650,23 @@ function finishVictorinaRound() {
   var rublixGain = won ? 12 : 0;
   if (victorinaCorrect === 10) rublixGain += 8;
   function applyRewardsAndShow(note, accepted) {
+    if (roundId !== victorinaRunId) return;
     if (accepted !== false) {
       addVictorinaXp(xpGain);
       if (rublixGain) addRublix(rublixGain);
       var userStats = getUserStats();
-      userStats.quizCorrectCount += victorinaCorrect;
+      userStats.quizCorrectCount += roundCorrect;
       setUserStats(userStats);
     }
     document.getElementById('victorinaResultTitle').textContent = won ? 'Победа в раунде!' : 'Раунд завершён';
-    var stats = 'Верно: ' + victorinaCorrect + ' из 10. Время: ~' + timeSec + ' с.';
+    var stats = 'Верно: ' + roundCorrect + ' из 10. Время: ~' + timeSec + ' с.';
     if (!won) stats += ' Для победы нужно ≥7 верных.';
     document.getElementById('victorinaResultStats').textContent = stats;
     var rw = accepted === false ? 'Награды не начислены.' : '+' + xpGain + ' XP';
     if (accepted !== false && rublixGain) rw += ', +' + rublixGain + ' «Рубликсов»';
     document.getElementById('victorinaResultRewards').textContent = rw + (note ? ' ' + note : '');
+    var currentScreen = document.querySelector('.screen.active');
+    if (!currentScreen || !['screen-victorina-game', 'screen-victorina-result'].includes(currentScreen.id)) return;
     showScreen('victorina-result');
     characterMotion.react(won && accepted !== false ? 'victory' : 'careful', {
       anchor: '#victorinaResultRewards',
@@ -766,6 +799,7 @@ function renderHomeFavorites() {
 function renderHome() {
   renderCharacterAvatar(document.getElementById('homeCharacterAvatar'), getCharacterAppearance(), 104, { fullBody: true });
   characterMotion.greet(document.getElementById('homeCharacterAvatar'));
+  companion.home();
   var subMain = document.getElementById('homeSubMain');
   var subFav = document.getElementById('homeSubFav');
   if (subMain) {
@@ -1212,18 +1246,26 @@ function gameIconSvg(iconId) {
 
 function renderGameList() {
   var accentById = { victorina: 'accent-red', quiz: 'accent-red', choice: 'accent-gold', runner: 'accent-mix', rugpull: 'accent-red' };
+  var tags = { victorina: 'Реакция на новости', quiz: 'Логика рынка', choice: 'Жизненные ситуации', runner: 'Аркада', rugpull: 'Лаборатория риска' };
+  var practice = getPracticeProgress();
+  var rewardLabels = { quiz: 'Первая практика: +20 XP', choice: 'Первая практика: +15 XP', runner: '10 очков за пробежку: +10 XP' };
   document.getElementById('gameCards').innerHTML = DATA.games.map(g => {
     var iconHtml = g.iconId ? gameIconSvg(g.iconId) : ('<span class="icon-fallback">' + escapeHtml(g.icon || '') + '</span>');
     var ac = accentById[g.id] || 'accent-violet';
     return `<a href="#" class="game-card ` + ac + `" data-game="${escapeHtml(g.id)}">
       <span class="game-card-icon">${iconHtml}</span>
       <div class="game-card-body">
+        <span class="game-mode-tag">${tags[g.id] || 'Практика'}</span>
         <h3>${escapeHtml(g.title)}</h3>
         <p>${escapeHtml(g.subtitle)}</p>
+        ${rewardLabels[g.id] ? '<span class="game-practice-note">' + (practice.completed[g.id] ? '✓ Практика сегодня пройдена' : rewardLabels[g.id]) + '</span>' : ''}
       </div>
       <span class="game-card-chevron" aria-hidden="true">›</span>
     </a>`;
   }).join('');
+  var wallet = document.getElementById('playWallet');
+  if (!wallet) { wallet = document.createElement('div'); wallet.id = 'playWallet'; wallet.className = 'play-wallet'; document.getElementById('gameCards').before(wallet); }
+  wallet.innerHTML = '<span>Опыт: <strong>' + getVictorinaXp() + ' XP</strong></span><span>Кошелёк: <strong>' + getRublixBalance() + ' рубликсов</strong></span><span>Практика: <strong>' + practice.count + '/3</strong></span>';
 }
 
 // ——— Rug pull game ———
@@ -1233,9 +1275,47 @@ let rugpullMultiplier = 1;
 let rugpullPhase = 'idle';
 let rugpullHistory = [1];
 let rugpullTimer = null;
+let rugpullOwner = null;
+let rugpullLastStake = 0;
+let rugpullLastResult = '';
+let rugpullPreset = null;
 const RUGPULL_TICK_MS = 220;
 const RUGPULL_GROWTH = [1.02, 1.10];
 const RUGPULL_INSTANT_RUG = 0.05;
+
+function syncRugpullOwner() {
+  var owner = getStorageUserSuffix();
+  if (rugpullOwner === owner) return;
+  stopRugpullTimer();
+  rugpullOwner = owner;
+  rugpullPhase = 'idle'; rugpullInvested = 0; rugpullMultiplier = 1; rugpullHistory = [1]; rugpullLastResult = '';
+  try {
+    var saved = JSON.parse(lsGetScoped('rubliks_rugpull_round') || 'null');
+    if (saved && saved.phase === 'pumping' && Number.isFinite(saved.invested) && saved.invested > 0 && Number.isFinite(saved.multiplier) && saved.multiplier >= 1 && Array.isArray(saved.history) && saved.history.length <= 80 && saved.history.every(n => Number.isFinite(n) && n > 0)) {
+      rugpullPhase = 'pumping'; rugpullInvested = saved.invested; rugpullLastStake = saved.invested; rugpullMultiplier = saved.multiplier; rugpullHistory = saved.history.length ? saved.history : [1];
+    }
+  } catch (_) {}
+}
+function persistRugpullRound() {
+  lsSetScoped('rubliks_rugpull_round', JSON.stringify({ phase: rugpullPhase, invested: rugpullInvested, multiplier: rugpullMultiplier, history: rugpullHistory }));
+}
+function rugpullAmount() {
+  var value = document.getElementById('rugpullBet').value.replace(/[\s\u00a0\u202f]/g, '');
+  return /^\d+(?:[.,]\d{0,2})?$/.test(value) ? Number(value.replace(',', '.')) : NaN;
+}
+function updateRugpullBet() {
+  var amount = rugpullAmount();
+  var balance = getRugpullBalance();
+  document.getElementById('rugpullBetHint').textContent = Number.isFinite(amount) && amount > 0
+    ? 'Под риском: ' + formatMoney(amount) + ' ₽' + (balance > 0 ? ' · ' + Math.round(amount / balance * 100) + '% учебного банка' : '') : 'Выбери плашку или введи сумму больше нуля.';
+  document.querySelectorAll('[data-rug-amount], [data-rug-percent]').forEach(function (button) {
+    var n = button.dataset.rugAmount ? Number(button.dataset.rugAmount) : Math.floor(balance * Number(button.dataset.rugPercent)) / 100;
+    button.disabled = n <= 0 || n > balance || rugpullPhase !== 'idle';
+    var selected = n === amount && (rugpullPreset ? button === rugpullPreset : !!button.dataset.rugAmount);
+    button.classList.toggle('active', selected);
+    button.setAttribute('aria-pressed', selected ? 'true' : 'false');
+  });
+}
 
 function rugProbability() {
   return Math.min(0.78, 0.015 + (rugpullMultiplier - 1) * 0.065);
@@ -1247,6 +1327,8 @@ function rugpullTick() {
     rugpullPhase = 'crashed';
     rugpullInvested = 0;
     rugpullHistory.push(0);
+    rugpullLastResult = 'Потеряно: ' + formatMoney(rugpullLastStake) + ' ₽. Это и есть риск обнуления.';
+    persistRugpullRound();
     setRugpullBalance(rugpullBalance);
     renderRugpull();
     stopRugpullTimer();
@@ -1256,6 +1338,7 @@ function rugpullTick() {
   rugpullMultiplier *= (RUGPULL_GROWTH[0] + Math.random() * (RUGPULL_GROWTH[1] - RUGPULL_GROWTH[0]));
   rugpullHistory.push(rugpullMultiplier);
   if (rugpullHistory.length > 80) rugpullHistory.shift();
+  persistRugpullRound();
   drawRugpullChart();
   document.getElementById('rugpullMultiplier').textContent = rugpullMultiplier.toFixed(2);
   document.getElementById('rugpullCurrent').textContent = 'Сейчас: ' + formatMoney(rugpullInvested * rugpullMultiplier) + ' ₽';
@@ -1276,7 +1359,7 @@ function drawRugpullChart() {
   if (!canvas) return;
   const ctx = canvas.getContext('2d');
   const w = canvas.clientWidth || 300;
-  const h = 140;
+  const h = canvas.clientHeight || 140;
   const dpr = window.devicePixelRatio || 1;
   canvas.width = Math.round(w * dpr);
   canvas.height = Math.round(h * dpr);
@@ -1307,10 +1390,22 @@ function drawRugpullChart() {
 }
 
 function rugpullInvest() {
+  syncRugpullOwner();
   if (rugpullPhase !== 'idle') return;
-  const amount = Number((document.getElementById('rugpullBet').value || '0').replace(',', '.'));
-  if (!Number.isFinite(amount) || amount <= 0 || amount > rugpullBalance) return;
-  rugpullBalance -= amount;
+  rugpullBalance = getRugpullBalance();
+  const amount = rugpullAmount();
+  if (!Number.isFinite(amount) || amount <= 0 || amount > rugpullBalance) {
+    document.getElementById('rugpullError').textContent = !Number.isFinite(amount) || amount <= 0 ? 'Введи сумму больше нуля, до двух знаков после запятой.' : 'В учебном банке не хватает денег на эту сумму.';
+    document.getElementById('rugpullBet').setAttribute('aria-invalid', 'true');
+    characterMotion.react('point', { anchor: '#rugpullBet', text: 'Выбери готовую сумму или введи свою. Она должна помещаться в твой учебный банк.' });
+    companion.highlight('#rugpullBet');
+    return;
+  }
+  document.getElementById('rugpullError').textContent = '';
+  document.getElementById('rugpullBet').removeAttribute('aria-invalid');
+  rugpullLastStake = amount;
+  rugpullLastResult = '';
+  rugpullBalance = Math.round((rugpullBalance - amount) * 100) / 100;
   rugpullInvested = amount;
   rugpullMultiplier = 1;
   rugpullHistory = [1];
@@ -1319,11 +1414,16 @@ function rugpullInvest() {
     rugpullPhase = 'crashed';
     rugpullInvested = 0;
     rugpullHistory.push(0);
+    rugpullLastResult = 'Потеряно: ' + formatMoney(amount) + ' ₽. Падение бывает и сразу после входа.';
   } else {
     rugpullPhase = 'pumping';
     startRugpullTimer();
   }
+  persistRugpullRound();
   renderRugpull();
+  document.getElementById('rugpullBet').blur();
+  if (rugpullPhase === 'pumping') document.getElementById('rugpullSell').focus({ preventScroll: true });
+  window.scrollTo({ top: 0, behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth' });
   characterMotion.react(rugpullPhase === 'crashed' ? 'bump' : 'careful', {
     anchor: '#rugpullChart', text: rugpullPhase === 'crashed' ? 'Вот и риск. Хорошо, что деньги учебные.' : 'Выглядит бодро. Но пол может исчезнуть.'
   });
@@ -1332,22 +1432,31 @@ function rugpullInvest() {
 function rugpullSell() {
   if (rugpullPhase !== 'pumping' || rugpullInvested <= 0) return;
   stopRugpullTimer();
-  rugpullBalance += rugpullInvested * rugpullMultiplier;
+  var payout = Math.round(rugpullInvested * rugpullMultiplier * 100) / 100;
+  rugpullBalance = Math.round((getRugpullBalance() + payout) * 100) / 100;
+  rugpullLastResult = 'Выведено: ' + formatMoney(payout) + ' ₽ · результат раунда: +' + formatMoney(payout - rugpullLastStake) + ' ₽.';
   rugpullInvested = 0;
   rugpullPhase = 'idle';
-  rugpullMultiplier = 1;
-  rugpullHistory = [1];
   setRugpullBalance(rugpullBalance);
+  persistRugpullRound();
   renderRugpull();
   characterMotion.react('relief', { anchor: '#rugpullChart', text: 'Фух, вышли. От риска это всё равно не лечит.' });
 }
 
 function renderRugpull() {
+  syncRugpullOwner();
+  document.getElementById('screen-rugpull').classList.toggle('rugpull-live', rugpullPhase === 'pumping');
   rugpullBalance = getRugpullBalance();
   document.getElementById('rugpullBalance').textContent = formatMoney(rugpullBalance) + ' ₽';
   document.getElementById('rugpullIdle').classList.toggle('hidden', rugpullPhase !== 'idle');
   document.getElementById('rugpullPumping').classList.toggle('hidden', rugpullPhase !== 'pumping');
   document.getElementById('rugpullCrashed').classList.toggle('hidden', rugpullPhase !== 'crashed');
+  document.getElementById('rugpullResetBank').classList.toggle('hidden', rugpullBalance > 0 || rugpullPhase !== 'idle');
+  document.getElementById('rugpullInvest').disabled = rugpullBalance <= 0;
+  document.getElementById('rugpullBet').disabled = rugpullBalance <= 0;
+  document.getElementById('rugpullResult').textContent = rugpullLastResult;
+  document.getElementById('rugpullResult').classList.toggle('hidden', !rugpullLastResult || rugpullPhase !== 'idle');
+  updateRugpullBet();
   if (rugpullPhase === 'pumping') {
     if (!rugpullTimer) startRugpullTimer();
     document.getElementById('rugpullMultiplier').textContent = rugpullMultiplier.toFixed(2);
@@ -1361,6 +1470,8 @@ function rugpullPlayAgain() {
   rugpullInvested = 0;
   rugpullMultiplier = 1;
   rugpullHistory = [1];
+  rugpullLastResult = '';
+  persistRugpullRound();
   renderRugpull();
 }
 
@@ -1644,428 +1755,378 @@ function startQuiz() {
   quizState.correct = 0;
   quizState.selected = null;
   quizState.showExplanation = false;
+  quizState.finished = false;
   quizState.items = typeof getQuizDeck === 'function' ? getQuizDeck() : (DATA.quizItems || []);
   if (!quizState.items.length) quizState.items = DATA.quizItems || [];
   var tag = document.getElementById('quizNavTagline');
-  var copy = (DATA.quizScreenCopy || {});
   if (tag) {
-    tag.textContent = copy.lead || 'Вопросы про рынок и новости — с пояснениями.';
+    tag.textContent = quizState.items.length + ' вопросов · объяснения после каждого ответа';
     tag.classList.remove('hidden');
   }
   var navTitle = document.querySelector('#screen-quiz .nav-title');
-  if (navTitle && copy.eyebrow) navTitle.textContent = copy.eyebrow;
+  if (navTitle) navTitle.textContent = 'Дневной квиз';
   renderQuizStep();
 }
 
-function renderQuizStep() {
-  var container = document.getElementById('quizContent');
-  if (!container) return;
-  var items = quizState.items && quizState.items.length ? quizState.items : (DATA.quizItems || []);
-  var appearance = getCharacterAppearance();
-  var charName = (appearance.name || '').trim();
-  if (quizState.index >= items.length) {
-    var stats = getUserStats();
-    stats.quizCorrectCount = (stats.quizCorrectCount || 0) + quizState.correct;
-    setUserStats(stats);
-    container.innerHTML = '<div class="quiz-play-area"><div class="quiz-done quiz-done-card"><p class="quiz-done-eyebrow">Готово</p><h3 class="quiz-done-title">Результат</h3><p class="quiz-result">' + quizState.correct + ' из ' + items.length + ' верных</p><button type="button" class="btn-primary" id="quizClose">Закрыть</button></div></div>';
-    document.getElementById('quizClose').addEventListener('click', function () { showScreen('game'); });
-    characterMotion.react('victory', { anchor: '#quizClose', text: 'Разобрались! Зарядка для мозга засчитана.' });
-    return;
-  }
-  var item = items[quizState.index];
-  var avatarHtml = '<div class="quiz-avatar-wrap" id="quizAvatarWrap"></div>';
-  if (charName) avatarHtml += '<span class="quiz-hero-text">' + escapeHtml(charName) + ', вперёд!</span>';
-  var opts = item.options.map(function (opt, i) {
-    var cls = 'quiz-option';
-    if (quizState.showExplanation) {
-      if (i === item.correctAnswerIndex) cls += ' correct';
-      else if (i === quizState.selected && i !== item.correctAnswerIndex) cls += ' wrong';
-    }
-    return '<button type="button" class="' + cls + '" data-idx="' + i + '">' + escapeHtml(opt) + '</button>';
-  }).join('');
-  var expl = '';
-  if (quizState.showExplanation) {
-    var isCorrect = quizState.selected === item.correctAnswerIndex;
-    var correctText = item.options[item.correctAnswerIndex];
-    expl = '<div class="quiz-explanation-block">' +
-      '<p class="quiz-explanation-head">💡 Пояснение</p>' +
-      (isCorrect ? '<p class="quiz-feedback correct">Верно!</p>' : '<p class="quiz-feedback wrong">Правильный ответ: ' + escapeHtml(correctText) + '</p>') +
-      '<p class="quiz-explanation-text">' + escapeHtml(item.explanation) + '</p></div>';
-  }
-  var nextBtn = quizState.showExplanation
-    ? '<button type="button" class="btn-primary" id="quizNext">' + (quizState.index + 1 >= items.length ? 'Результат' : 'Далее') + '</button>'
-    : '';
-  container.innerHTML = '<div class="quiz-play-area">' +
-    '<div class="quiz-hero">' + avatarHtml + '</div>' +
-    '<p class="quiz-progress"><span class="quiz-progress-track"><span class="quiz-progress-fill" style="width:' + Math.round((quizState.index + 1) / items.length * 100) + '%"></span></span>Вопрос ' + (quizState.index + 1) + ' из ' + items.length + '</p>' +
-    '<div class="quiz-question-card">' + escapeHtml(item.question) + '</div>' +
-    (expl || '') +
-    '<div class="quiz-options">' + opts + '</div>' + nextBtn + '</div>';
-  var wrap = document.getElementById('quizAvatarWrap');
-  if (wrap) renderCharacterAvatar(wrap, appearance, 56, { emotion: quizState.showExplanation ? (quizState.selected === item.correctAnswerIndex ? 'happy' : 'thinking') : 'neutral' });
-  if (quizState.showExplanation) characterMotion.play(wrap, quizState.selected === item.correctAnswerIndex ? 'correct' : 'think');
-  if (!quizState.showExplanation) {
-    container.querySelectorAll('.quiz-option').forEach(function (btn) {
-      btn.addEventListener('click', function () {
-        if (quizState.selected != null) return;
-        quizState.selected = parseInt(btn.getAttribute('data-idx'), 10);
-        if (quizState.selected === item.correctAnswerIndex) quizState.correct++;
-        quizState.showExplanation = true;
-        renderQuizStep();
-      });
-    });
-  } else {
-    var n = document.getElementById('quizNext');
-    if (n) n.addEventListener('click', function () {
-      quizState.index++;
-      quizState.selected = null;
-      quizState.showExplanation = false;
-      renderQuizStep();
-    });
-  }
-}
+function renderQuizStep() { renderQuestionGame('quiz'); }
 
-document.getElementById('btnBackQuiz').addEventListener('click', function () { showScreen('game'); });
-
-// ——— Financial choice (интерфейс как в квизе: персонаж, карточка вопроса, варианты, пояснение, Далее) ———
-var choiceState = { index: 0, selected: null, showExplanation: false };
-
+var choiceState = { index: 0, correct: 0, selected: null, showExplanation: false, finished: false };
 function renderChoice() {
-  choiceState.index = 0;
-  choiceState.selected = null;
-  choiceState.showExplanation = false;
+  choiceState = { index: 0, correct: 0, selected: null, showExplanation: false, finished: false };
   renderChoiceStep();
 }
+function renderChoiceStep() { renderQuestionGame('choice'); }
 
-function renderChoiceStep() {
-  var el = document.getElementById('choiceContent');
-  if (!el) return;
-  var items = DATA.choiceItems || [];
-  var appearance = getCharacterAppearance();
-  var charName = (appearance.name || '').trim();
-  if (choiceState.index >= items.length) {
-    el.innerHTML = '<div class="quiz-play-area"><div class="quiz-done quiz-done-card"><p class="quiz-done-eyebrow">Финансовый выбор</p><h3 class="quiz-done-title">Ситуации пройдены</h3><p class="quiz-result">Разобрано: ' + items.length + '</p><button type="button" class="btn-primary" id="choiceClose">Закрыть</button></div></div>';
-    document.getElementById('choiceClose').addEventListener('click', function () { showScreen('game'); });
-    characterMotion.react('victory', { anchor: '#choiceClose', text: 'Ситуации разобрали. Затылок тоже почесали.' });
+function renderQuestionGame(mode) {
+  var isQuiz = mode === 'quiz';
+  var state = isQuiz ? quizState : choiceState;
+  var items = isQuiz ? quizState.items : DATA.choiceItems;
+  var container = document.getElementById(mode + 'Content');
+  if (!container) return;
+  var done = state.index >= items.length;
+  var guideId = mode + 'Guide';
+  if (done) {
+    if (!state.finished) state.reward = awardPracticeRound(mode);
+    if (!state.finished && isQuiz) {
+      var stats = getUserStats();
+      stats.quizCorrectCount = (stats.quizCorrectCount || 0) + state.correct;
+      setUserStats(stats);
+    }
+    state.finished = true;
+    container.innerHTML = '<div class="quiz-play-area"><section class="quiz-hero" id="' + guideId + '"></section>' +
+      '<div class="quiz-done quiz-done-card"><p class="quiz-done-eyebrow">Раунд пройден</p><h3 class="quiz-done-title">' + (isQuiz ? 'Результат' : 'Ситуации пройдены') +
+      '</h3><p class="quiz-result">' + state.correct + ' из ' + items.length + ' верных</p><p class="practice-reward" role="status">' + practiceRewardText(state.reward) + '</p><button type="button" class="btn-primary" id="' + mode + 'Again">Ещё раунд</button>' +
+      '<button type="button" class="btn-text" id="' + mode + 'Close">Закрыть</button></div></div>';
+    companion.attach(document.getElementById(guideId), {
+      avatarId: mode + 'AvatarWrap', mood: 'victory',
+      text: state.correct === items.length ? 'Чистый раунд! А теперь попробуй объяснить один из ответов своими словами.' : 'Раунд в кармане. Ошибки показали, какие темы можно подтянуть — это тоже прогресс.',
+      target: '.quiz-result'
+    });
+    document.getElementById(mode + 'Close').addEventListener('click', function () { showScreen('game'); });
+    document.getElementById(mode + 'Again').addEventListener('click', function () { if (isQuiz) startQuiz(); else renderChoice(); });
     return;
   }
-  var item = items[choiceState.index];
-  var avatarHtml = '<div class="quiz-avatar-wrap" id="choiceAvatarWrap"></div>';
-  if (charName) avatarHtml += '<span class="quiz-hero-text">' + escapeHtml(charName) + ', вперёд!</span>';
-  var opts = item.options.map(function (opt, i) {
-    var cls = 'quiz-option choice-option';
-    if (choiceState.showExplanation) {
+  var item = items[state.index];
+  var correct = state.selected === item.correctAnswerIndex;
+  var options = item.options.map(function (option, i) {
+    var cls = 'quiz-option' + (isQuiz ? '' : ' choice-option');
+    if (state.showExplanation) {
       if (i === item.correctAnswerIndex) cls += ' correct';
-      else if (i === choiceState.selected && i !== item.correctAnswerIndex) cls += ' wrong';
+      else if (i === state.selected) cls += ' wrong';
     }
-    return '<button type="button" class="' + cls + '" data-idx="' + i + '">' + escapeHtml(opt) + '</button>';
+    return '<button type="button" class="' + cls + '" data-idx="' + i + '" data-letter="' + ['А', 'Б', 'В', 'Г'][i] + '"' +
+      (state.showExplanation ? ' disabled' : '') + '>' + escapeHtml(option) + '</button>';
   }).join('');
-  var expl = '';
-  if (choiceState.showExplanation) {
-    var isCorrect = choiceState.selected === item.correctAnswerIndex;
-    expl = '<div class="quiz-explanation-block">' +
-      '<p class="quiz-explanation-head">💡 Пояснение</p>' +
-      (isCorrect ? '<p class="quiz-feedback correct">Верно!</p>' : '<p class="quiz-feedback wrong">Правильный ответ: ' + escapeHtml(item.options[item.correctAnswerIndex]) + '</p>') +
-      '<p class="quiz-explanation-text">' + escapeHtml(item.explanation) + '</p></div>';
-  }
-  var nextBtn = choiceState.showExplanation
-    ? '<button type="button" class="btn-primary" id="choiceNext">' + (choiceState.index + 1 >= items.length ? 'Завершить' : 'Далее') + '</button>'
-    : '';
-  el.innerHTML = '<div class="quiz-play-area">' +
-    '<div class="quiz-hero">' + avatarHtml + '</div>' +
-    '<p class="quiz-progress"><span class="quiz-progress-track"><span class="quiz-progress-fill" style="width:' + Math.round((choiceState.index + 1) / items.length * 100) + '%"></span></span>Ситуация ' + (choiceState.index + 1) + ' из ' + items.length + '</p>' +
-    '<div class="quiz-question-card">' + escapeHtml(item.question) + '</div>' +
-    (expl || '') +
-    '<div class="quiz-options">' + opts + '</div>' + nextBtn + '</div>';
-  var wrap = document.getElementById('choiceAvatarWrap');
-  if (wrap) renderCharacterAvatar(wrap, appearance, 56, { emotion: choiceState.showExplanation ? (choiceState.selected === item.correctAnswerIndex ? 'happy' : 'thinking') : 'neutral' });
-  if (choiceState.showExplanation) characterMotion.play(wrap, choiceState.selected === item.correctAnswerIndex ? 'correct' : 'think');
-  if (!choiceState.showExplanation) {
-    el.querySelectorAll('.choice-option').forEach(function (btn) {
-      btn.addEventListener('click', function () {
-        if (choiceState.selected != null) return;
-        choiceState.selected = parseInt(btn.getAttribute('data-idx'), 10);
-        choiceState.showExplanation = true;
-        renderChoiceStep();
+  var explanation = state.showExplanation
+    ? '<div class="quiz-explanation-block"><p class="quiz-feedback ' + (correct ? 'correct' : 'wrong') + '">' +
+      (correct ? 'Верно! Связь найдена.' : 'Правильный ответ: ' + escapeHtml(item.options[item.correctAnswerIndex])) + '</p></div>' : '';
+  container.innerHTML = '<div class="quiz-play-area"><p class="quiz-progress"><span class="quiz-progress-track"><span class="quiz-progress-fill" style="width:' +
+    Math.round(state.index / items.length * 100) + '%"></span></span>' + (isQuiz ? 'Вопрос ' : 'Ситуация ') + (state.index + 1) + ' / ' + items.length +
+    ' · Верно: ' + state.correct + '</p><section class="quiz-hero" id="' + guideId + '"></section>' +
+    '<div class="quiz-question-card" id="' + mode + 'Question" tabindex="-1">' + escapeHtml(item.question) + '</div>' +
+    explanation + '<div class="quiz-options">' + options + '</div>' +
+    (state.showExplanation ? '<button type="button" class="btn-primary" id="' + mode + 'Next">' + (state.index + 1 >= items.length ? 'Результат' : 'Дальше') + ' →</button>' : '') + '</div>';
+  companion.attach(document.getElementById(guideId), {
+    avatarId: mode + 'AvatarWrap',
+    mood: state.showExplanation ? (correct ? 'correct' : 'think') : 'point',
+    text: state.showExplanation ? (correct ? 'Верно. ' : 'Разберёмся. ') + item.explanation :
+      (isQuiz ? 'Как новость изменит ситуацию? Давай разбираться.' : 'Что бы ты сделал? Выбери вариант — разберём последствия вместе.'),
+    target: '#' + mode + 'Question',
+    tips: isQuiz ? ['Спроси себя: что изменилось для компании или инвестора? Цена не растёт просто потому, что новость звучит громко.'] :
+      ['Сначала оцени риск и свои цели. Обещание быстрой прибыли само по себе не делает решение хорошим.']
+  });
+  if (!state.showExplanation) {
+    container.querySelectorAll('.quiz-option').forEach(function (button) {
+      button.addEventListener('click', function () {
+        if (state.selected != null) return;
+        state.selected = Number(button.dataset.idx);
+        if (state.selected === item.correctAnswerIndex) state.correct++;
+        state.showExplanation = true;
+        renderQuestionGame(mode);
+        document.getElementById(mode + 'Next').focus({ preventScroll: true });
       });
     });
   } else {
-    var nextEl = document.getElementById('choiceNext');
-    if (nextEl) nextEl.addEventListener('click', function () {
-      choiceState.index++;
-      choiceState.selected = null;
-      choiceState.showExplanation = false;
-      renderChoiceStep();
+    document.getElementById(mode + 'Next').addEventListener('click', function () {
+      state.index++;
+      state.selected = null;
+      state.showExplanation = false;
+      renderQuestionGame(mode);
+      var question = document.getElementById(mode + 'Question');
+      if (question) question.focus({ preventScroll: true });
     });
   }
 }
-
+document.getElementById('btnBackQuiz').addEventListener('click', function () { showScreen('game'); });
 document.getElementById('btnBackChoice').addEventListener('click', function () { showScreen('game'); });
 
-// ——— Вперёд, инвестор! (как в приложении: тап — прыжок, кнопка — присед, монеты +10, камень −1 жизнь, минус −10 очков) ———
-var runnerEngine = {
-  phase: 'start',
-  score: 0,
-  lives: 3,
-  characterY: 0.78,
-  characterVelocity: 0,
-  isCrouching: false,
-  items: [],
-  groundOffset: 0,
-  bestScore: 0,
-  gamePlayTime: 0,
-  gravity: 0.0026,
-  jumpForce: -0.044,
-  groundY: 0.78,
-  baseSpeed: 0.0095,
-  spawnInterval: 950,
-  speedGrowthPerSecond: 0.008,
-  maxSpeedMultiplier: 2.0,
-  crouchDropBoost: 0.018,
-  charCenterX: 0.22,
-  charWidth: 0.12,
-  charHeightStand: 0.14,
-  charHeightCrouch: 0.08,
-  minusPenalty: 10,
-  rockSize: 0.06,
-  minusW: 0.08,
-  minusH: 0.05,
-  coinR: 0.04,
-  rafId: null,
-  spawnTimer: null
-};
-
-
-function runnerStart() {
-  runnerEngine.phase = 'playing';
-  runnerEngine.score = 0;
-  runnerEngine.lives = 3;
-  runnerEngine.characterY = runnerEngine.groundY;
-  runnerEngine.characterVelocity = 0;
-  runnerEngine.isCrouching = false;
-  runnerEngine.items = [];
-  runnerEngine.groundOffset = 0;
-  runnerEngine.gamePlayTime = 0;
-  runnerEngine.bestScore = getRunnerBestScore();
-  renderRunner();
+function practiceRewardText(reward) {
+  return reward && reward.awarded ? '+' + reward.xp + ' XP и +' + reward.rublix + (reward.rublix === 1 ? ' рубликс' : ' рубликса') + ' за первую практику дня.' : 'Сегодня эта награда уже получена. Можно повторять ради практики.';
 }
 
+// ——— Runner: one input model and pixel-aligned visual/collision geometry ———
+var runnerEngine = {
+  phase: 'start', score: 0, lives: 3, characterY: .85, characterVelocity: 0,
+  isCrouching: false, items: [], groundOffset: 0, bestScore: 0, gamePlayTime: 0,
+  gravity: .0026, jumpForce: -.044, groundY: .85, baseSpeed: .0095,
+  spawnInterval: 1050, speedGrowthPerSecond: .008, maxSpeedMultiplier: 2,
+  crouchDropBoost: .018, charCenterX: .22, minusPenalty: 10,
+  sceneWidth: 300, sceneHeight: 300, invulnerableUntil: 0, isNewBest: false,
+  rafId: null, spawnTimer: null
+};
+function runnerStart() {
+  runnerStopLoop();
+  Object.assign(runnerEngine, { phase: 'playing', score: 0, lives: 3, characterY: runnerEngine.groundY,
+    characterVelocity: 0, isCrouching: false, items: [], groundOffset: 0, gamePlayTime: 0,
+    bestScore: getRunnerBestScore(), invulnerableUntil: 0, isNewBest: false });
+  runnerEngine.reward = null;
+  runnerEngine.items = [{ id: 'warmup-1', x: .72, y: .68, type: 'coin' }, { id: 'warmup-2', x: 1.05, y: .57, type: 'coin' }];
+  renderRunner();
+}
+function runnerResize() {
+  var area = document.getElementById('runnerGameArea');
+  if (area && area.clientWidth) { runnerEngine.sceneWidth = area.clientWidth; runnerEngine.sceneHeight = area.clientHeight; }
+  var speech = document.getElementById('runnerSpeech');
+  if (speech && !speech.hidden) { speech._speechWidth = speech.offsetWidth; speech._speechHeight = speech.offsetHeight; }
+  if (runnerEngine.phase === 'playing' || runnerEngine.phase === 'paused') runnerRenderGame();
+}
+function runnerBox() {
+  var w = runnerEngine.sceneWidth, h = runnerEngine.sceneHeight;
+  var x = runnerEngine.charCenterX * w, feet = runnerEngine.characterY * h;
+  return { left: x - 15, right: x + 15, top: feet - (runnerEngine.isCrouching ? 36 : 66), bottom: feet - 2 };
+}
+function runnerItemBox(item) {
+  var x = item.x * runnerEngine.sceneWidth, y = item.y * runnerEngine.sceneHeight;
+  var halfW = item.type === 'coin' ? 16 : item.type === 'rock' ? 22 : 26;
+  var halfH = item.type === 'coin' ? 16 : item.type === 'rock' ? 18 : 14;
+  return { left: x - halfW, right: x + halfW, top: y - halfH, bottom: y + halfH };
+}
 function runnerStartLoop() {
+  if (runnerEngine.rafId != null) cancelAnimationFrame(runnerEngine.rafId);
   var last = performance.now();
   function tick(now) {
     if (runnerEngine.phase !== 'playing') return;
-    var dt = Math.min((now - last) / 1000, 0.1);
-    last = now;
+    var dt = Math.min((now - last) / 1000, .05); last = now;
     runnerEngine.gamePlayTime += dt;
-    var speed = runnerEngine.baseSpeed * (1.0 + Math.min(runnerEngine.gamePlayTime * runnerEngine.speedGrowthPerSecond, runnerEngine.maxSpeedMultiplier - 1.0));
-    runnerEngine.groundOffset = (runnerEngine.groundOffset + speed * 60 * dt) % 0.08;
+    var speed = runnerEngine.baseSpeed * (1 + Math.min(runnerEngine.gamePlayTime * runnerEngine.speedGrowthPerSecond, runnerEngine.maxSpeedMultiplier - 1));
+    runnerEngine.groundOffset = (runnerEngine.groundOffset + speed * 60 * dt) % .4;
     runnerEngine.characterVelocity += runnerEngine.gravity * 60 * dt;
-    if (runnerEngine.isCrouching && runnerEngine.characterY < runnerEngine.groundY) {
-      runnerEngine.characterVelocity += runnerEngine.crouchDropBoost * 60 * dt;
-    }
-    runnerEngine.characterY += runnerEngine.characterVelocity * 60 * dt;
-    if (runnerEngine.characterY >= runnerEngine.groundY) {
-      runnerEngine.characterY = runnerEngine.groundY;
-      runnerEngine.characterVelocity = 0;
-    }
-    if (runnerEngine.characterY < 0.2) runnerEngine.characterY = 0.2;
-    var charH = runnerEngine.isCrouching ? runnerEngine.charHeightCrouch : runnerEngine.charHeightStand;
-    var charTop = runnerEngine.characterY - charH / 2;
-    var charBottom = runnerEngine.characterY + charH / 2;
-    var charLeft = runnerEngine.charCenterX - runnerEngine.charWidth / 2;
-    var charRight = runnerEngine.charCenterX + runnerEngine.charWidth / 2;
-    var newItems = [];
-    for (var i = 0; i < runnerEngine.items.length; i++) {
-      var item = runnerEngine.items[i];
+    if (runnerEngine.isCrouching && runnerEngine.characterY < runnerEngine.groundY) runnerEngine.characterVelocity += runnerEngine.crouchDropBoost * 60 * dt;
+    runnerEngine.characterY = Math.max(.2, runnerEngine.characterY + runnerEngine.characterVelocity * 60 * dt);
+    if (runnerEngine.characterY >= runnerEngine.groundY) { runnerEngine.characterY = runnerEngine.groundY; runnerEngine.characterVelocity = 0; }
+    var character = runnerBox(), remaining = [];
+    for (var item of runnerEngine.items) {
       item.x -= speed * 60 * dt;
-      if (item.x < runnerEngine.charCenterX - 0.18) continue;
-      if (item.x < -0.3) continue;
+      if (item.x * runnerEngine.sceneWidth < -50) continue;
+      var box = runnerItemBox(item);
+      var hit = character.left < box.right && character.right > box.left && character.top < box.bottom && character.bottom > box.top;
+      if (!hit) { remaining.push(item); continue; }
       if (item.type === 'coin') {
-        var overlapX = charRight > item.x - runnerEngine.coinR && charLeft < item.x + runnerEngine.coinR;
-        var overlapY = charBottom > item.y - runnerEngine.coinR && charTop < item.y + runnerEngine.coinR;
-        if (overlapX && overlapY) {
-          runnerEngine.score += 10;
-          characterMotion.play(document.querySelector('.runner-character-inner'), 'coin');
-          continue;
-        }
-      } else if (item.type === 'rock') {
-        var rTop = item.y - runnerEngine.rockSize / 2, rBottom = item.y + runnerEngine.rockSize / 2;
-        var rLeft = item.x - runnerEngine.rockSize / 2, rRight = item.x + runnerEngine.rockSize / 2;
-        if (charRight > rLeft && charLeft < rRight && charBottom > rTop && charTop < rBottom) {
-          runnerEngine.lives--;
-          characterMotion.play(document.querySelector('.runner-character-inner'), 'bump');
-          if (runnerEngine.lives <= 0) {
-            if (runnerEngine.score > runnerEngine.bestScore) {
-              runnerEngine.bestScore = runnerEngine.score;
-              setRunnerBestScore(runnerEngine.bestScore);
-            }
-            runnerEngine.phase = 'over';
-            runnerStopLoop();
-            renderRunner();
-            return;
-          }
-          continue;
-        }
+        runnerEngine.score += 10;
+        characterMotion.play(document.querySelector('.runner-character-inner'), 'coin');
       } else if (item.type === 'minus') {
-        var mTop = item.y - runnerEngine.minusH / 2, mBottom = item.y + runnerEngine.minusH / 2;
-        var mLeft = item.x - runnerEngine.minusW / 2, mRight = item.x + runnerEngine.minusW / 2;
-        if (!runnerEngine.isCrouching && charRight > mLeft && charLeft < mRight && charBottom > mTop && charTop < mBottom) {
-          runnerEngine.score = Math.max(0, runnerEngine.score - runnerEngine.minusPenalty);
-          continue;
+        runnerEngine.score = Math.max(0, runnerEngine.score - runnerEngine.minusPenalty);
+        companion.runner('−10 очков. Под плашками можно присесть.', 'think');
+      } else if (runnerEngine.gamePlayTime >= runnerEngine.invulnerableUntil) {
+        runnerEngine.lives--;
+        runnerEngine.invulnerableUntil = runnerEngine.gamePlayTime + .85;
+        companion.runner('Камень! Есть секунда передышки. Прыгай заранее.', 'bump');
+        if (runnerEngine.lives <= 0) {
+          runnerEngine.isNewBest = runnerEngine.score > runnerEngine.bestScore;
+          if (runnerEngine.isNewBest) { runnerEngine.bestScore = runnerEngine.score; setRunnerBestScore(runnerEngine.score); }
+          runnerEngine.reward = runnerEngine.score >= 10 ? awardPracticeRound('runner') : null;
+          runnerEngine.phase = 'over'; runnerStopLoop(); renderRunner(); return;
         }
       }
-      newItems.push(item);
     }
-    runnerEngine.items = newItems;
+    runnerEngine.items = remaining;
     runnerRenderGame();
     runnerEngine.rafId = requestAnimationFrame(tick);
   }
   runnerEngine.rafId = requestAnimationFrame(tick);
 }
-
 function runnerSpawn() {
   if (runnerEngine.phase !== 'playing') return;
-  var roll = Math.floor(Math.random() * 100) + 1;
-  var type = roll <= 50 ? 'coin' : roll <= 75 ? 'rock' : 'minus';
-  var y = type === 'coin' ? 0.58 + Math.random() * 0.08 : type === 'rock' ? 0.85 - runnerEngine.rockSize / 2 : 0.78;
-  runnerEngine.items.push({ id: Math.random(), x: 1.15, y: y, type: type });
+  var roll = Math.random(), type = roll < .5 ? 'coin' : roll < .75 ? 'rock' : 'minus';
+  var y = type === 'coin' ? .57 + Math.random() * .1 : type === 'rock'
+    ? runnerEngine.groundY - 18 / runnerEngine.sceneHeight
+    : runnerEngine.groundY - 57 / runnerEngine.sceneHeight;
+  runnerEngine.items.push({ id: Math.random(), x: 1.12, y, type });
 }
-
 function runnerStopLoop() {
-  if (runnerEngine.rafId != null) {
-    cancelAnimationFrame(runnerEngine.rafId);
-    runnerEngine.rafId = null;
-  }
-  if (runnerEngine.spawnTimer != null) {
-    clearInterval(runnerEngine.spawnTimer);
-    runnerEngine.spawnTimer = null;
-  }
+  if (runnerEngine.rafId != null) cancelAnimationFrame(runnerEngine.rafId);
+  if (runnerEngine.spawnTimer != null) clearInterval(runnerEngine.spawnTimer);
+  runnerEngine.rafId = null; runnerEngine.spawnTimer = null;
 }
-
 function runnerJump() {
-  if (runnerEngine.phase !== 'playing' || runnerEngine.characterY < runnerEngine.groundY - 0.01) return;
+  if (runnerEngine.phase !== 'playing' || runnerEngine.isCrouching || runnerEngine.characterVelocity < 0 || runnerEngine.characterY < runnerEngine.groundY - .01) return;
   runnerEngine.characterVelocity = runnerEngine.jumpForce;
   characterMotion.play(document.querySelector('.runner-character-inner'), 'jump');
 }
-
-function runnerSetCrouch(v) {
-  runnerEngine.isCrouching = v;
-  if (v) characterMotion.stop(document.querySelector('.runner-character-inner'));
+function runnerSetCrouch(value) {
+  runnerEngine.isCrouching = value && runnerEngine.phase === 'playing';
+  if (value) characterMotion.stop(document.querySelector('.runner-character-inner'));
+  if (document.getElementById('runnerCrouchBtn')) document.getElementById('runnerCrouchBtn').setAttribute('aria-pressed', String(runnerEngine.isCrouching));
 }
-
+function runnerPause() {
+  if (runnerEngine.phase !== 'playing') return;
+  runnerEngine.phase = 'paused'; runnerStopLoop(); runnerSetCrouch(false);
+  document.getElementById('runnerPauseLayer').hidden = false;
+  document.getElementById('runnerPauseBtn').textContent = 'Продолжить';
+  document.getElementById('runnerJumpBtn').disabled = true;
+  document.getElementById('runnerCrouchBtn').disabled = true;
+  document.getElementById('runnerResume').focus({ preventScroll: true });
+}
+function runnerResume() {
+  if (runnerEngine.phase !== 'paused') return;
+  runnerEngine.phase = 'playing';
+  document.getElementById('runnerPauseLayer').hidden = true;
+  document.getElementById('runnerPauseBtn').textContent = 'Пауза';
+  document.getElementById('runnerJumpBtn').disabled = false;
+  document.getElementById('runnerCrouchBtn').disabled = false;
+  runnerEngine.spawnTimer = setInterval(runnerSpawn, runnerEngine.spawnInterval);
+  runnerStartLoop();
+  document.getElementById('runnerGameArea').focus({ preventScroll: true });
+}
 function runnerRenderGame() {
-  var container = document.getElementById('runnerGameArea');
-  if (!container) return;
-  var w = container.offsetWidth;
-  var h = container.offsetHeight;
-  var charEl = document.getElementById('runnerCharacter');
-  if (charEl) {
-    var size = runnerEngine.isCrouching ? 52 : 72;
-    var charHNorm = runnerEngine.isCrouching ? runnerEngine.charHeightCrouch : runnerEngine.charHeightStand;
-    charEl.style.width = size + 'px';
-    charEl.style.height = size + 'px';
-    charEl.style.left = (runnerEngine.charCenterX * w - size / 2) + 'px';
-    charEl.style.top = (runnerEngine.characterY * h - charHNorm * h / 2) + 'px';
-    charEl.style.transform = runnerEngine.isCrouching ? 'scaleY(0.5)' : 'scaleY(1)';
-    charEl.style.transformOrigin = 'center bottom';
-    characterMotion.runStep(charEl.querySelector('.runner-character-inner'), runnerEngine.gamePlayTime,
-      runnerEngine.isCrouching, runnerEngine.characterY < runnerEngine.groundY - .01);
+  var area = document.getElementById('runnerGameArea');
+  if (!area) return;
+  var w = runnerEngine.sceneWidth, h = runnerEngine.sceneHeight;
+  var character = document.getElementById('runnerCharacter');
+  character.style.width = '72px'; character.style.height = '72px';
+  character.style.left = runnerEngine.charCenterX * w - 36 + 'px';
+  character.style.top = runnerEngine.characterY * h - 72 + 'px';
+  character.style.transform = runnerEngine.isCrouching ? 'scaleY(.56)' : 'none';
+  character.style.transformOrigin = 'center bottom';
+  character.classList.toggle('is-invulnerable', runnerEngine.gamePlayTime < runnerEngine.invulnerableUntil);
+  var speech = document.getElementById('runnerSpeech');
+  if (!speech.hidden) {
+    var speechX = Math.max(12, Math.min(runnerEngine.charCenterX * w - 28, w - (speech._speechWidth || 220) - 12));
+    var speechY = Math.max(8, runnerEngine.characterY * h - 82 - (speech._speechHeight || 54));
+    speech.style.transform = 'translate(' + (speechX - 16) + 'px,' + (speechY - 12) + 'px)';
   }
-  var itemsEl = document.getElementById('runnerItems');
-  if (itemsEl) {
-    itemsEl.innerHTML = runnerEngine.items.map(function (item) {
-      var left = (item.x * w) + 'px';
-      var top = (item.y * h) + 'px';
-      if (item.type === 'coin') {
-        return '<div class="runner-coin" style="left:' + left + ';top:' + top + '">₽</div>';
-      }
-      if (item.type === 'rock') {
-        return '<div class="runner-rock" style="left:' + left + ';top:' + top + '"></div>';
-      }
-      return '<div class="runner-minus" style="left:' + left + ';top:' + top + '">📉</div>';
-    }).join('');
-  }
-  var scoreEl = document.getElementById('runnerScore');
-  if (scoreEl) scoreEl.textContent = runnerEngine.score;
-  var livesEl = document.getElementById('runnerLives');
-  if (livesEl) {
-    livesEl.innerHTML = [1, 2, 3].map(function (i) {
-      return '<span class="runner-heart">' + (i <= runnerEngine.lives ? '♥' : '♡') + '</span>';
-    }).join('');
-  }
-  var groundEl = document.getElementById('runnerGround');
-  if (groundEl) groundEl.style.backgroundPosition = (runnerEngine.groundOffset * w) + 'px 0';
+  characterMotion.runStep(character.querySelector('.runner-character-inner'), runnerEngine.gamePlayTime, runnerEngine.isCrouching, runnerEngine.characterY < runnerEngine.groundY - .01);
+  document.getElementById('runnerItems').innerHTML = runnerEngine.items.map(function (item) {
+    var cls = item.type === 'coin' ? 'runner-coin' : item.type === 'rock' ? 'runner-rock' : 'runner-minus';
+    return '<div class="' + cls + '" style="left:' + item.x * w + 'px;top:' + item.y * h + 'px">' + (item.type === 'coin' ? '₽' : item.type === 'minus' ? '−10' : '') + '</div>';
+  }).join('');
+  document.getElementById('runnerScore').textContent = runnerEngine.score;
+  document.getElementById('runnerLives').innerHTML = [1,2,3].map(i => '<span class="runner-heart">' + (i <= runnerEngine.lives ? '♥' : '♡') + '</span>').join('');
+  document.getElementById('runnerGround').style.backgroundPosition = runnerEngine.groundOffset * w + 'px 0';
 }
-
 function renderRunner() {
-  var el = document.getElementById('runnerContent');
-  if (!el) return;
-  runnerEngine.bestScore = getRunnerBestScore();
+  var container = document.getElementById('runnerContent');
+  if (!container) return;
+  runnerStopLoop();
   if (runnerEngine.phase === 'start' || runnerEngine.phase === 'over') {
-    var isOver = runnerEngine.phase === 'over';
-    var avatarWrap = '<div class="runner-start-avatar" id="runnerStartAvatar"></div>';
-    el.innerHTML = '<div class="runner-start">' +
-      avatarWrap +
-      '<h3 class="runner-start-title">Вперёд, инвестор!</h3>' +
-      '<p class="runner-start-desc">Тап — прыжок. Кнопка вниз — присед. Монеты +10. Минусы −10 очков. Камень −1 жизнь. 0 жизней — конец.</p>' +
-      '<div class="runner-badges">' +
-      '<div class="runner-badge"><span class="runner-badge-coin">₽</span><span>+10</span></div>' +
-      '<div class="runner-badge"><span class="runner-badge-rock"></span><span>−1 жизнь</span></div>' +
-      '<div class="runner-badge"><span class="runner-badge-minus">📉</span><span>−10 очков</span></div>' +
-      '</div>' +
-      (isOver ? ('<h3 class="runner-stop-title">Стоп!</h3><p class="runner-over-score">Очки: ' + runnerEngine.score + '</p>' +
-        (runnerEngine.score >= runnerEngine.bestScore && runnerEngine.score > 0 ? '<p class="runner-new-record">Новый рекорд!</p>' : '') +
-        '<p class="runner-record">Рекорд: ' + runnerEngine.bestScore + '</p>') : '') +
-      '<button type="button" class="btn-primary runner-btn-start" id="runnerBtnStart">' + (isOver ? 'Ещё раз' : 'Бежать!') + '</button></div>';
-    var av = document.getElementById('runnerStartAvatar');
-    if (av) renderCharacterAvatar(av, getCharacterAppearance(), 120, { fullBody: true, emotion: isOver ? 'happy' : 'neutral' });
-    characterMotion.play(av, isOver ? (runnerEngine.score >= runnerEngine.bestScore && runnerEngine.score > 0 ? 'victory' : 'careful') : 'welcome');
-    document.getElementById('runnerBtnStart').addEventListener('click', function () {
-      runnerStart();
+    var over = runnerEngine.phase === 'over';
+    runnerEngine.bestScore = getRunnerBestScore();
+    container.innerHTML = '<div class="runner-start"><section id="runnerGuide"><div class="runner-start-avatar buddy-avatar" id="runnerStartAvatar"></div></section>' +
+      '<h3 class="runner-start-title">' + (over ? 'Стоп! Отличная пробежка.' : 'Вперёд, инвестор!') + '</h3>' +
+      '<p class="runner-start-desc">Собирай монеты. Перепрыгивай камни. Под плашками «−10» приседай.</p>' +
+      '<div class="runner-badges"><div class="runner-badge"><span class="runner-badge-coin">₽</span>+10 очков</div><div class="runner-badge">Камень −1 жизнь</div></div>' +
+      (over ? '<p class="runner-over-score">Очки: ' + runnerEngine.score + '</p>' + (runnerEngine.isNewBest ? '<p class="runner-new-record">Новый рекорд!</p>' : '') + '<p class="practice-reward" role="status">' + (runnerEngine.reward ? practiceRewardText(runnerEngine.reward) : 'Собери хотя бы одну монету за пробежку, чтобы получить награду за практику.') + '</p>' : '') +
+      '<p class="runner-record">Личный рекорд: ' + runnerEngine.bestScore + '</p><button type="button" class="btn-primary runner-btn-start" id="runnerBtnStart">' + (over ? 'Ещё раз' : 'Бежать!') + '</button></div>';
+    companion.attach(document.getElementById('runnerGuide'), {
+      avatar: document.getElementById('runnerStartAvatar'), mood: over ? (runnerEngine.isNewBest ? 'victory' : 'proud') : 'welcome',
+      text: over ? 'Результат — ' + runnerEngine.score + ' очков. Смотри на препятствие заранее: прыжок и приседание решают разные задачи.' :
+        'Я бегу, ты рулишь! Пробел или ↑ — прыжок. Удерживай ↓ для приседания. На телефоне есть две большие кнопки.',
+      target: '#runnerBtnStart', tips: ['Под плашкой −10 приседай, а через камень прыгай. При столкновении есть короткая передышка.', 'Нажми «Пауза» или P, если нужно отдохнуть. В другой вкладке игра тоже остановится.']
     });
+    document.getElementById('runnerBtnStart').addEventListener('click', runnerStart);
     return;
   }
-  if (runnerEngine.phase === 'playing') {
-    el.innerHTML = '<div class="runner-game-wrap">' +
-      '<div class="runner-hud"><span id="runnerScore">0</span> очков <span class="runner-lives" id="runnerLives">♥♥♥</span></div>' +
-      '<div id="runnerGameArea" class="runner-game-area">' +
-      '<div id="runnerGround" class="runner-ground"></div>' +
-      '<div id="runnerItems" class="runner-items"></div>' +
-      '<div id="runnerCharacter" class="runner-character"></div>' +
-      '</div>' +
-      '<button type="button" class="runner-crouch-btn" id="runnerCrouchBtn" aria-label="Присесть">↓</button>' +
-      '</div>';
-    var charWrap = document.getElementById('runnerCharacter');
-    if (charWrap) {
-      var inner = document.createElement('div');
-      inner.className = 'runner-character-inner';
-      charWrap.appendChild(inner);
-      renderCharacterAvatar(inner, getCharacterAppearance(), 72, { fullBody: true });
-    }
-    var area = document.getElementById('runnerGameArea');
-    area.addEventListener('click', function (e) { e.preventDefault(); runnerJump(); });
-    area.addEventListener('touchstart', function (e) { e.preventDefault(); runnerJump(); }, { passive: false });
-    var crouchBtn = document.getElementById('runnerCrouchBtn');
-    if (crouchBtn) {
-      crouchBtn.addEventListener('mousedown', function () { runnerSetCrouch(true); });
-      crouchBtn.addEventListener('mouseup', function () { runnerSetCrouch(false); });
-      crouchBtn.addEventListener('mouseleave', function () { runnerSetCrouch(false); });
-      crouchBtn.addEventListener('touchstart', function (e) { e.preventDefault(); runnerSetCrouch(true); }, { passive: false });
-      crouchBtn.addEventListener('touchend', function (e) { e.preventDefault(); runnerSetCrouch(false); });
-    }
-    runnerRenderGame();
+  var paused = runnerEngine.phase === 'paused';
+  container.innerHTML = '<div class="runner-game-wrap"><div class="runner-hud"><span><strong id="runnerScore">0</strong> очков</span><span id="runnerLives" class="runner-lives"></span><button type="button" id="runnerPauseBtn" class="play-small-btn">' + (paused ? 'Продолжить' : 'Пауза') + '</button></div>' +
+    '<div id="runnerGameArea" class="runner-game-area" tabindex="0" aria-label="Игровое поле. Пробел — прыжок, стрелка вниз — присесть.">' +
+    '<div id="runnerGround" class="runner-ground"></div><div id="runnerItems" class="runner-items"></div><div id="runnerCharacter" class="runner-character"><div class="runner-character-inner"></div></div>' +
+    '<div id="runnerSpeech" class="runner-speech" role="status" hidden></div>' +
+    '<div id="runnerPauseLayer" class="runner-pause-layer"' + (paused ? '' : ' hidden') + '><strong>Передышка</strong><p>Очки и жизни на месте. Таймер не идёт.</p><button type="button" id="runnerResume" class="btn-primary">Продолжить</button></div></div>' +
+    '<div class="runner-controls"><button type="button" id="runnerJumpBtn" class="btn-primary">↑ Прыжок</button><button type="button" id="runnerCrouchBtn" class="runner-crouch-btn" aria-label="Присесть" aria-pressed="false">↓ Удерживай</button></div></div>';
+  renderCharacterAvatar(document.querySelector('.runner-character-inner'), getCharacterAppearance(), 72, { fullBody: true });
+  runnerResize();
+  var area = document.getElementById('runnerGameArea'), crouch = document.getElementById('runnerCrouchBtn');
+  area.addEventListener('pointerdown', function (event) { if (event.target.closest('button') || event.button > 0) return; event.preventDefault(); runnerJump(); });
+  document.getElementById('runnerJumpBtn').addEventListener('click', runnerJump);
+  crouch.addEventListener('pointerdown', function (event) {
+    event.preventDefault(); runnerSetCrouch(true);
+    try { crouch.setPointerCapture(event.pointerId); } catch (_) {}
+  });
+  ['pointerup', 'pointercancel', 'lostpointercapture'].forEach(name => crouch.addEventListener(name, function () { runnerSetCrouch(false); }));
+  crouch.addEventListener('keydown', function (event) {
+    if (![' ', 'Enter'].includes(event.key)) return;
+    event.preventDefault(); event.stopPropagation(); runnerSetCrouch(true);
+  });
+  crouch.addEventListener('keyup', function (event) {
+    if (![' ', 'Enter'].includes(event.key)) return;
+    event.preventDefault(); event.stopPropagation(); runnerSetCrouch(false);
+  });
+  crouch.addEventListener('click', function (event) { if (event.detail === 0) runnerSetCrouch(!runnerEngine.isCrouching); });
+  document.getElementById('runnerPauseBtn').addEventListener('click', function () { if (runnerEngine.phase === 'paused') runnerResume(); else runnerPause(); });
+  document.getElementById('runnerResume').addEventListener('click', runnerResume);
+  if (!paused) {
     runnerEngine.spawnTimer = setInterval(runnerSpawn, runnerEngine.spawnInterval);
     runnerStartLoop();
+    companion.runner('↑ Прыжок. ↓ Удерживай, чтобы присесть. Поехали!', 'point');
+    area.focus({ preventScroll: true });
   }
 }
-
+document.addEventListener('keydown', function (event) {
+  if (!document.getElementById('screen-runner').classList.contains('active') || event.target.closest('input,textarea,select,[contenteditable="true"]')) return;
+  var key = event.key.toLowerCase();
+  if (event.target.closest('button') && [' ', 'enter'].includes(key)) return;
+  if (key === 'p' || key === 'з' || key === 'escape') {
+    event.preventDefault(); if (event.repeat) return;
+    if (runnerEngine.phase === 'playing') runnerPause(); else if (runnerEngine.phase === 'paused') runnerResume();
+  } else if (runnerEngine.phase === 'playing' && [' ', 'arrowup', 'w', 'ц'].includes(key)) {
+    event.preventDefault(); if (!event.repeat) runnerJump();
+  } else if (runnerEngine.phase === 'playing' && ['arrowdown', 's', 'ы'].includes(key)) {
+    event.preventDefault(); runnerSetCrouch(true);
+  }
+});
+document.addEventListener('keyup', function (event) { if (['ArrowDown','s','S','ы','Ы'].includes(event.key)) runnerSetCrouch(false); });
+window.addEventListener('pointerup', function () { if (runnerEngine.isCrouching) runnerSetCrouch(false); });
+window.addEventListener('blur', function () { runnerSetCrouch(false); });
+window.addEventListener('resize', runnerResize);
 document.getElementById('btnBackRunner').addEventListener('click', function () {
-  runnerStopLoop();
-  runnerEngine.phase = 'start';
-  showScreen('game');
+  runnerStopLoop(); runnerEngine.phase = 'start'; runnerSetCrouch(false); showScreen('game');
 });
 document.getElementById('rugpullInvest').addEventListener('click', rugpullInvest);
 document.getElementById('rugpullSell').addEventListener('click', rugpullSell);
+document.getElementById('rugpullBet').addEventListener('input', function () {
+  rugpullPreset = null;
+  document.getElementById('rugpullError').textContent = '';
+  document.getElementById('rugpullBet').removeAttribute('aria-invalid');
+  updateRugpullBet();
+});
+document.querySelectorAll('[data-rug-amount], [data-rug-percent]').forEach(function (button) {
+  button.addEventListener('click', function () {
+    if (rugpullPhase !== 'idle' || button.disabled) return;
+    var amount = button.dataset.rugAmount ? Number(button.dataset.rugAmount) : Math.floor(getRugpullBalance() * Number(button.dataset.rugPercent)) / 100;
+    rugpullPreset = button;
+    document.getElementById('rugpullBet').value = String(amount);
+    document.getElementById('rugpullError').textContent = '';
+    document.getElementById('rugpullBet').removeAttribute('aria-invalid');
+    updateRugpullBet();
+    characterMotion.react('tap', { anchor: button, text: 'Выбрали ' + formatMoney(amount) + ' ₽. Это учебные деньги, но риск потерять всю ставку остаётся.' });
+    companion.highlight('#rugpullBet', 'tap', document.getElementById('buddy-rugpull'));
+  });
+});
+document.getElementById('rugpullResetBank').addEventListener('click', function () {
+  if (rugpullPhase !== 'idle' || getRugpullBalance() > 0) return;
+  setRugpullBalance(10000);
+  rugpullLastResult = ''; document.getElementById('rugpullBet').value = '1000';
+  renderRugpull();
+  characterMotion.react('explain', { anchor: '#rugpullBet', text: 'Новая учебная попытка. Попробуй меньшую долю банка и сравни последствия.' });
+});
+
+document.addEventListener('visibilitychange', function () {
+  if (document.hidden) {
+    if (runnerEngine.phase === 'playing') runnerPause();
+    pauseVictorina(true);
+    stopRugpullTimer();
+  } else if (document.getElementById('screen-rugpull').classList.contains('active')) renderRugpull();
+});
 document.getElementById('rugpullPlayAgain').addEventListener('click', rugpullPlayAgain);
 
 document.getElementById('btnSell').addEventListener('click', () => {
@@ -2728,6 +2789,14 @@ document.getElementById('btnEntranceDone').addEventListener('click', function ()
 
 document.getElementById('btnBackVictorinaEntry').addEventListener('click', function () { showScreen('game'); });
 document.getElementById('btnVictorinaStart').addEventListener('click', startVictorinaGame);
+document.getElementById('btnBackVictorinaGame').addEventListener('click', function () { showScreen('game'); });
+document.getElementById('btnVictorinaPause').addEventListener('click', function () { pauseVictorina(); });
+document.getElementById('btnVictorinaNext').addEventListener('click', function () {
+  if (!victorinaLocked || victorinaRoundFinished) return;
+  victorinaIdx++;
+  showVictorinaQuestion();
+  if (victorinaIdx < 10) document.getElementById('victorinaText').focus({ preventScroll: true });
+});
 [0, 1, 2].forEach(function (i) {
   document.getElementById('btnVictorina' + i).addEventListener('click', function () { onVictorinaAnswer(i, false); });
 });

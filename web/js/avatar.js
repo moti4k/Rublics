@@ -9,6 +9,7 @@
     options = options || {};
     size = size || 80;
     if (global.characterMotion) global.characterMotion.stop(container);
+    if (global.characterMotion && global.characterMotion.stopSpeech) global.characterMotion.stopSpeech(container);
     const fullBody = options.fullBody || size >= 110;
     const skinIndex = index(appearance.skinToneIndex, 3);
     const skin = ['#F4CEAD', '#DDA779', '#A56D4F'][skinIndex];
@@ -72,11 +73,13 @@
         : topIndex === 1 || topIndex === 4
           ? `<path d="M121 159L139 168L154 157L158 172L147 181L139 170L129 181L117 173Z" fill="${topShade}"/><path d="M139 173L140 229" stroke="${topShade}" stroke-width="1.5"/><g fill="${topIndex === 1 ? '#6B7472' : '#D8E1D5'}"><circle cx="140" cy="187" r="1.4"/><circle cx="140" cy="199" r="1.4"/><circle cx="140" cy="211" r="1.4"/></g>`
           : `<path d="M120 160C122 179 151 181 157 160" fill="none" stroke="${topShade}" stroke-width="5"/><path d="M151 195L160 195L160 205L151 205Z" fill="#EAD6AA"/><path d="M154 198L157 201L154 203" fill="none" stroke="${topShade}" stroke-width="1.5"/>`;
-    const mouth = emotion === 'happy'
+    const restingMouth = emotion === 'happy'
       ? `<path d="M123 131Q139 143 154 129C151 148 131 151 123 131Z" fill="#743E3C"/><path d="M126 133Q139 140 151 132L149 138Q138 143 129 137Z" fill="#FFF7EB"/>`
       : emotion === 'thinking'
         ? '<path d="M130 137Q140 132 148 135" fill="none" stroke="#854C45" stroke-width="2.2" stroke-linecap="round"/>'
         : '<path d="M125 132Q140 143 153 130" fill="none" stroke="#854C45" stroke-width="2.2" stroke-linecap="round"/><path d="M130 139Q139 143 146 138" fill="none" stroke="#FFFFFF" stroke-opacity=".3" stroke-width="1.5"/>';
+    const mouth = '<g class="char-mouth-rest">' + restingMouth + '</g>' +
+      '<g class="char-mouth-talk" opacity="0"><ellipse class="char-mouth-opening" cx="139" cy="136" rx="6" ry="3" fill="#743E3C"/><path class="char-mouth-teeth" d="M134 133Q139 136 144 133L143 135Q139 137 135 135Z" fill="#FFF7EB"/></g>';
     const eyebrows = emotion === 'thinking'
       ? '<path d="M111 96Q119 89 127 94M148 92L162 97"/>'
       : '<path d="M111 95Q119 91 127 95M148 94Q156 90 164 94"/>';

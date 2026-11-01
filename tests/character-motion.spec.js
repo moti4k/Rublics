@@ -11,20 +11,21 @@ test.beforeEach(async ({ page }) => {
   await expect(page.locator('.stock-chip').first()).toBeVisible();
 });
 test.afterEach(async ({ page }) => { expect(page.motionErrors).toEqual([]); });
+function reaction(page, type) {
+  return page.locator('.screen.active [data-buddy][data-reaction="' + type + '"]:visible, #characterReaction[data-reaction="' + type + '"]:visible');
+}
 
 test('character responds to trades without blocking controls or changing rewards', async ({ page }) => {
   await page.locator('.stock-chip').first().click();
   await page.locator('#btnBuyStock').click();
   await page.locator('#purchaseQty').fill('0');
   await page.locator('#btnPurchase').click();
-  await expect(page.locator('#characterReaction')).toHaveAttribute('data-reaction', 'think');
-  await expect(page.locator('#characterReaction')).toBeVisible();
+  await expect(reaction(page, 'think')).toBeVisible();
   const cash = await page.evaluate(() => getBalance());
   await page.locator('#purchaseQty').fill('1');
   await page.locator('#btnPurchase').click();
   await expect(page.locator('#purchaseMessage')).toContainText('Успех');
-  await expect(page.locator('#characterReaction')).toHaveAttribute('data-reaction', 'buy');
-  await expect(page.locator('#characterReaction')).toBeVisible();
+  await expect(reaction(page, 'buy')).toBeVisible();
   expect(await page.evaluate(() => getPortfolio().stocks[0].quantity)).toBe(1);
   expect(await page.evaluate(() => getBalance())).toBeLessThan(cash);
   // Decorative feedback must not intercept taps on the purchase button.
@@ -37,8 +38,7 @@ test('character responds to trades without blocking controls or changing rewards
   await page.evaluate(() => showScreen('sell'));
   await page.locator('[data-sell-stock]').first().click();
   await page.locator('#sellSheetConfirm').click();
-  await expect(page.locator('#characterReaction')).toHaveAttribute('data-reaction', 'sell');
-  await expect(page.locator('#characterReaction')).toBeVisible();
+  await expect(reaction(page, 'sell')).toBeVisible();
   expect(await page.evaluate(() => getPortfolio().stocks.length)).toBe(0);
   await expect(page.locator('#sellMessage')).toContainText('Успех');
 });
@@ -55,7 +55,7 @@ test('wardrobe and question answers use distinct gestures', async ({ page }) => 
   const correct = await page.evaluate(() => quizState.items[0].correctAnswerIndex);
   await page.locator('#quizContent .quiz-option').nth(correct).click();
   await expect(page.locator('#quizAvatarWrap')).toHaveAttribute('data-last-motion', 'correct');
-  await expect(page.locator('#quizAvatarWrap svg')).toHaveCSS('overflow', 'hidden');
+  await expect(page.locator('#quizAvatarWrap svg')).toHaveCSS('overflow', 'visible');
   await page.locator('#quizNext').click();
   const wrong = await page.evaluate(() => (quizState.items[quizState.index].correctAnswerIndex + 1) % quizState.items[quizState.index].options.length);
   await page.locator('#quizContent .quiz-option').nth(wrong).click();
@@ -64,7 +64,7 @@ test('wardrobe and question answers use distinct gestures', async ({ page }) => 
 
 test('reaction replaces stale timers, fits the viewport and cleans up', async ({ page }) => {
   await page.clock.install();
-  await page.evaluate(() => characterMotion.react('welcome', { anchor: '#btnHomeAnalytics', text: 'Привет!', duration: 1000 }));
+  await page.evaluate(() => characterMotion.react('welcome', { anchor: '#btnHomeAnalytics', text: 'Привет!', duration: 1000, floating: true }));
   await page.clock.runFor(400);
   expect(await page.locator('#characterReaction .char-arm-right').getAttribute('transform')).not.toBe('rotate(0 171 172)');
   const bounds = await page.locator('#characterReaction').evaluate(node => {
@@ -75,7 +75,7 @@ test('reaction replaces stale timers, fits the viewport and cleans up', async ({
   expect(bounds.right).toBeLessThanOrEqual(bounds.width);
   expect(bounds.y).toBeGreaterThanOrEqual(0);
   expect(bounds.bottom).toBeLessThanOrEqual(bounds.height);
-  await page.evaluate(() => characterMotion.react('buy', { anchor: '#btnHomeAnalytics', text: 'Монетка в кармане.', duration: 3000 }));
+  await page.evaluate(() => characterMotion.react('buy', { anchor: '#btnHomeAnalytics', text: 'Монетка в кармане.', duration: 3000, floating: true }));
   await page.clock.runFor(700);
   await expect(page.locator('#characterReaction')).toBeVisible();
   await expect(page.locator('#characterReaction')).toHaveAttribute('data-reaction', 'buy');
@@ -86,14 +86,14 @@ test('reaction replaces stale timers, fits the viewport and cleans up', async ({
 
 test('reduced motion keeps feedback readable and navigation cancels it', async ({ page }) => {
   await page.emulateMedia({ reducedMotion: 'reduce' });
-  await page.evaluate(() => characterMotion.react('victory', { anchor: '#btnHomeAnalytics', text: 'Раунд завершён.' }));
+  await page.evaluate(() => characterMotion.react('victory', { anchor: '#btnHomeAnalytics', text: 'Раунд завершён.', floating: true }));
   await expect(page.locator('#characterReaction [role="status"]')).toHaveText('Раунд завершён.');
   await expect(page.locator('[data-motion]')).toHaveCount(0);
   await expect.poll(() => page.locator('#characterReaction').evaluate(node => node.getAnimations({ subtree: true }).length)).toBe(0);
   await page.locator('[data-tab="game"]').click();
   await expect(page.locator('#characterReaction')).toBeHidden();
   await page.locator('[data-tab="game"]').focus();
-  await page.evaluate(() => characterMotion.react('careful', { anchor: '#gameCards', text: 'Перерыв.' }));
+  await page.evaluate(() => characterMotion.react('careful', { anchor: '#gameCards', text: 'Перерыв.', floating: true }));
   await page.getByRole('button', { name: 'Скрыть реакцию персонажа' }).focus();
   await page.getByRole('button', { name: 'Скрыть реакцию персонажа' }).press('Enter');
   await expect(page.locator('#characterReaction')).toBeHidden();

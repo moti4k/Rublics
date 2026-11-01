@@ -19,6 +19,12 @@ async function enter(page) {
   await expect(page.locator('#balanceAmount')).not.toHaveText('—');
 }
 
+async function avatarArtwork(locator) {
+  return locator.evaluate(svg => Array.from(svg.querySelectorAll('path,ellipse,circle'))
+    .filter(node => !node.closest('.char-mouth-talk,.char-mouth-rest'))
+    .map(node => ['d', 'fill', 'stroke', 'cx', 'cy', 'rx', 'ry'].map(key => node.getAttribute(key))));
+}
+
 test('navigation, materials, games, and layouts', async ({ page }) => {
   const errors = [];
   page.on('pageerror', e => errors.push(e.message));
@@ -135,7 +141,7 @@ test('market quiz records result and rugpull can resume', async ({ page }) => {
   for (let i = 0; i < 10; i++) {
     const answer = await page.evaluate(() => victorinaDeck[victorinaIdx].correct);
     await page.locator('#btnVictorina' + answer).click();
-    await page.clock.runFor(2000);
+    await page.locator('#btnVictorinaNext').click();
   }
   await expect(page.locator('#victorinaResultTitle')).toHaveText('Победа в раунде!');
   expect(await page.evaluate(() => getVictorinaPlaysToday())).toBe(1);
@@ -233,21 +239,21 @@ test('illustrated avatar presets and every appearance slot survive reload', asyn
   await page.locator('#btnHomeCharacter').click();
   const preview = page.locator('#characterAvatarPreview svg');
   await expect(preview).toHaveAttribute('role', 'img');
-  const initial = await preview.innerHTML();
+  const initial = await avatarArtwork(preview);
   await page.getByRole('button', { name: 'Худи и кудри', exact: true }).click();
-  expect(await preview.innerHTML()).not.toBe(initial);
+  expect(await avatarArtwork(preview)).not.toEqual(initial);
   for (const key of ['skinTone', 'face', 'hair', 'top', 'bottom', 'shoes', 'accessory']) {
-    const before = await preview.innerHTML();
+    const before = await avatarArtwork(preview);
     await page.locator('.character-option-row[data-key="' + key + '"]').click();
-    expect(await preview.innerHTML()).not.toBe(before);
+    expect(await avatarArtwork(preview)).not.toEqual(before);
   }
   await page.locator('#characterSave').click();
   const saved = await page.evaluate(() => getCharacterAppearance());
-  const homeArt = await page.locator('#homeCharacterAvatar svg').innerHTML();
+  const homeArt = await avatarArtwork(page.locator('#homeCharacterAvatar svg'));
   await page.reload({ waitUntil: 'domcontentloaded' });
   await expect(page.locator('#homeCharacterAvatar svg')).toBeVisible();
   expect(await page.evaluate(() => getCharacterAppearance())).toEqual(saved);
-  expect(await page.locator('#homeCharacterAvatar svg').innerHTML()).toBe(homeArt);
+  expect(await avatarArtwork(page.locator('#homeCharacterAvatar svg'))).toEqual(homeArt);
   await page.locator('#btnHomeCharacter').click();
   await page.getByRole('button', { name: 'Кэжуал', exact: true }).click();
   await page.locator('#characterCancel').click();
@@ -300,9 +306,14 @@ test('runner collects coins, ends after collisions, and persists best score', as
   for (let i = 0; i < 3; i++) {
     await page.evaluate(() => runnerEngine.items = [{ id: 2, x: .22, y: .78, type: 'rock' }]);
     await page.clock.runFor(40);
+    await page.clock.runFor(900);
   }
   await expect(page.locator('#runnerContent')).toContainText('Стоп!');
   expect(await page.evaluate(() => getRunnerBestScore())).toBe(10);
+  expect(await page.evaluate(() => getPracticeProgress().completed.runner)).toBe(true);
+  expect(await page.evaluate(() => getRublixBalance())).toBe(1);
+  await page.evaluate(() => renderRunner());
+  expect(await page.evaluate(() => getRublixBalance())).toBe(1);
   await page.reload({ waitUntil: 'domcontentloaded' });
   expect(await page.evaluate(() => getRunnerBestScore())).toBe(10);
 });

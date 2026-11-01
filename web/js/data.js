@@ -1215,7 +1215,8 @@ function getRugpullBalance() {
     var v = null;
     if (!isLocalOnlyScopedStorage()) v = typeof db !== 'undefined' && db.getRugpullBalance ? db.getRugpullBalance() : null;
     if (v == null) v = lsGetScoped('rubliks_rugpull_balance');
-    return v != null ? parseFloat(v) : 10000;
+    const balance = v != null ? Number(v) : 10000;
+    return Number.isFinite(balance) && balance >= 0 ? Math.round(balance * 100) / 100 : 10000;
   } catch (e) { return 10000; }
 }
 
@@ -1356,6 +1357,29 @@ function getRublixBalance() {
 
 function addRublix(n) {
   try { lsSetScoped('rubliks_rublix', String(getRublixBalance() + (n || 0))); } catch (e) {}
+}
+
+function getPracticeProgress() {
+  const now = new Date();
+  const day = [now.getFullYear(), now.getMonth() + 1, now.getDate()].join('-');
+  let completed = {};
+  try {
+    const saved = JSON.parse(lsGetScoped('rubliks_practice_day') || 'null');
+    if (saved && saved.day === day && saved.completed && typeof saved.completed === 'object') {
+      ['quiz', 'choice', 'runner'].forEach(id => { if (saved.completed[id] === true) completed[id] = true; });
+    }
+  } catch (_) {}
+  return { day, completed, count: Object.keys(completed).length };
+}
+function awardPracticeRound(type) {
+  const rewards = { quiz: [20, 3], choice: [15, 2], runner: [10, 1] };
+  const progress = getPracticeProgress();
+  if (!Object.prototype.hasOwnProperty.call(rewards, type) || progress.completed[type]) return { awarded: false, xp: 0, rublix: 0 };
+  progress.completed[type] = true;
+  lsSetScoped('rubliks_practice_day', JSON.stringify({ day: progress.day, completed: progress.completed }));
+  const [xp, rublix] = rewards[type];
+  addVictorinaXp(xp); addRublix(rublix);
+  return { awarded: true, xp, rublix };
 }
 
 function syncPortfolioFromServerIfBackend() {
