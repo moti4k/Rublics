@@ -68,24 +68,26 @@
     if (base === undefined || (base === '' && (typeof location === 'undefined' || location.protocol === 'file:')))
       return Promise.reject(new Error('API_BASE_URL not set'));
     var url = base === '' ? path : base + path;
-    var opts = { method: method, headers: { 'Content-Type': 'application/json' } };
+    var controller = new AbortController();
+    var timer = setTimeout(function () { controller.abort(); }, 10000);
+    var opts = { method: method, headers: { 'Content-Type': 'application/json' }, signal: controller.signal };
     if (useAuth !== false) {
       var t = getToken();
       if (t) opts.headers['Authorization'] = 'Bearer ' + t;
     }
     if (body != null && (method === 'POST' || method === 'PUT' || method === 'PATCH')) opts.body = JSON.stringify(body);
     return fetch(url, opts).then(function (r) {
-      if (r.status === 401) { setToken(null); cachedUser = null; }
+      if (r.status === 401 && useAuth !== false) { setToken(null); cachedUser = null; }
       var contentType = r.headers.get('Content-Type') || '';
       if (contentType.indexOf('application/json') !== -1) return r.json().then(function (data) { return { ok: r.ok, status: r.status, data: data }; });
       return r.text().then(function (text) { return { ok: r.ok, status: r.status, data: { error: text || 'Ошибка' } }; });
     }).catch(function (err) {
       var msg = err && err.message ? String(err.message) : '';
-      if (!msg || msg === 'Failed to fetch' || msg === 'Load failed' || msg.indexOf('NetworkError') !== -1 || msg.indexOf('Network request failed') !== -1) {
+      if (err.name === 'AbortError' || !msg || msg === 'Failed to fetch' || msg === 'Load failed' || msg.indexOf('NetworkError') !== -1 || msg.indexOf('Network request failed') !== -1) {
         throw new Error(NETWORK_ERR_MSG);
       }
       throw err;
-    });
+    }).finally(function () { clearTimeout(timer); });
   }
 
   function register(email, password, displayName) {

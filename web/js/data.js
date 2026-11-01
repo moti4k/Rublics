@@ -55,13 +55,13 @@ const DATA = {
     taxes: {
       title: 'Налоги',
       paragraphs: [
-        'С доходов от инвестиций в России платится НДФЛ — 13% (до 5 млн ₽ в год) или 15% (свыше).',
+        'Доход от инвестиций может облагаться НДФЛ. Ставка зависит от вида дохода и действующих правил; актуальные условия проверяют на сайте ФНС.',
         'Что облагается: доход от продажи акций, облигаций, валюты, дивиденды, купоны. Убытки можно учесть и уменьшить налог в следующих периодах.',
         'Куда идёт: налоги формируют бюджет — медицина, образование, дороги, пенсии. Часть идёт в регионы.',
         'Как платить: брокер может быть налоговым агентом (удерживает и переводит налог сам) или вы подаёте декларацию 3-НДФЛ и платите сами. ИИС даёт право на вычет или освобождение от НДФЛ по сделкам при соблюдении условий.'
       ],
       facts: [
-        'Индивидуальный инвестиционный счёт (ИИС) позволяет получить вычет до 52 000 ₽ в год или не платить НДФЛ с прибыли по сделкам.',
+        'У ИИС бывают налоговые льготы. Их условия зависят от типа счёта, даты открытия и срока владения.',
         'Убытки по одним активам можно зачесть в счёт будущей прибыли — это называется перенос убытков.',
         'Дивиденды российских компаний облагаются по той же ставке НДФЛ; налог часто удерживает брокер при выплате.'
       ],
@@ -887,18 +887,21 @@ function invalidatePortfolioBundleCache() {
 function normalizeHoldings(h) {
   if (!h || typeof h !== 'object') return { stocks: [], crypto: [], futuresValueRub: 0 };
   return {
-    stocks: Array.isArray(h.stocks) ? h.stocks : [],
-    crypto: Array.isArray(h.crypto) ? h.crypto : [],
-    futuresValueRub: h.futuresValueRub != null ? h.futuresValueRub : 0
+    stocks: Array.isArray(h.stocks) ? h.stocks.filter(x => x && typeof x.ticker === 'string' && Number.isFinite(x.quantity) && x.quantity > 0) : [],
+    crypto: Array.isArray(h.crypto) ? h.crypto.filter(x => x && typeof x.symbol === 'string' && Number.isFinite(x.amount) && x.amount > 0) : [],
+    futuresValueRub: Number.isFinite(h.futuresValueRub) && h.futuresValueRub >= 0 ? h.futuresValueRub : 0
   };
 }
 
 function normalizeBundleAccounts(b) {
   if (!b.accounts || !Array.isArray(b.accounts)) b.accounts = [];
+  b.accounts = b.accounts.filter(a => a && typeof a === 'object');
+  if (!b.accounts.length) b.accounts.push({ id: 'acc_main', name: 'Основной счёт', balanceRub: 0, holdings: {} });
   b.accounts.forEach(function (a) {
     if (!a.id) a.id = 'acc_' + Math.random().toString(36).slice(2, 10);
     if (!a.name) a.name = 'Счёт';
-    if (a.balanceRub == null || isNaN(a.balanceRub)) a.balanceRub = 0;
+    a.balanceRub = Number(a.balanceRub);
+    if (!Number.isFinite(a.balanceRub) || a.balanceRub < 0) a.balanceRub = 0;
     a.holdings = normalizeHoldings(a.holdings);
   });
   if (!b.activeId || !b.accounts.some(function (x) { return x.id === b.activeId; })) {

@@ -21,7 +21,7 @@ app.use((req, res, next) => {
     return res.status(400).json({ error: 'Нужен JSON-объект' });
   }
   if (req.method === 'POST' && (req.path === '/api/register' || req.path === '/api/login' || req.path === '/api/friends')) {
-    if (typeof req.body?.email !== 'string' || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(req.body.email) || req.body.email.length > 254) {
+    if (typeof req.body?.email !== 'string' || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(req.body.email.trim()) || req.body.email.length > 254) {
       return res.status(400).json({ error: 'Укажите корректный email' });
     }
   }
@@ -36,6 +36,9 @@ app.use((req, res, next) => {
     for (const key of ['balance', 'balanceRub', 'videosWatched', 'quizCorrectCount']) {
       if (req.body[key] != null && (typeof req.body[key] !== 'number' || !Number.isFinite(req.body[key]) || req.body[key] < 0)) {
         return res.status(400).json({ error: 'Некорректная статистика' });
+      }
+      if (['videosWatched', 'quizCorrectCount'].includes(key) && req.body[key] != null && !Number.isSafeInteger(req.body[key])) {
+        return res.status(400).json({ error: 'Счётчик должен быть целым числом' });
       }
     }
     if (req.body.investorLevel != null && !['novice', 'explorer', 'pro'].includes(req.body.investorLevel)) {
@@ -130,9 +133,29 @@ app.patch('/api/portfolio', authMiddleware, (req, res) => {
   if (!portfolio || typeof portfolio !== 'object' || Array.isArray(portfolio)) {
     return res.status(400).json({ error: 'Нужен объект portfolio' });
   }
+  function validHoldings(h) {
+    if (!h || typeof h !== 'object' || Array.isArray(h)) return false;
+    const finitePositive = n => typeof n === 'number' && Number.isFinite(n) && n > 0;
+    for (const [key, symbol, amount] of [['stocks', 'ticker', 'quantity'], ['crypto', 'symbol', 'amount']]) {
+      if (h[key] == null) continue;
+      if (!Array.isArray(h[key]) || h[key].length > 200) return false;
+      const seen = new Set();
+      for (const row of h[key]) {
+        if (!row || typeof row[symbol] !== 'string' || !/^[A-Z0-9._-]{1,32}$/.test(row[symbol]) || !finitePositive(row[amount]) || seen.has(row[symbol])) return false;
+        seen.add(row[symbol]);
+      }
+    }
+    return h.futuresValueRub == null || (typeof h.futuresValueRub === 'number' && Number.isFinite(h.futuresValueRub) && h.futuresValueRub >= 0);
+  }
   if (portfolio.v === 2 && Array.isArray(portfolio.accounts)) {
     if (!portfolio.accounts.length || portfolio.accounts.length > 5 || portfolio.accounts.some(a => !a || typeof a !== 'object' || typeof a.id !== 'string' || !Number.isFinite(a.balanceRub) || a.balanceRub < 0 || !a.holdings || typeof a.holdings !== 'object')) {
       return res.status(400).json({ error: 'Некорректные счета портфеля' });
+    }
+    const ids = portfolio.accounts.map(a => a.id);
+    if (new Set(ids).size !== ids.length || ids.some(id => !id || id.length > 100) ||
+        (portfolio.activeId != null && !ids.includes(portfolio.activeId)) ||
+        portfolio.accounts.some(a => !validHoldings(a.holdings) || (a.name != null && (typeof a.name !== 'string' || a.name.length > 100)))) {
+      return res.status(400).json({ error: 'Некорректные позиции или идентификаторы счетов' });
     }
     portfolio.accounts.forEach((a) => {
       if (!a.holdings) a.holdings = { stocks: [], crypto: [], futuresValueRub: 0 };
@@ -144,6 +167,7 @@ app.patch('/api/portfolio', authMiddleware, (req, res) => {
     db.updateUserStats(req.userId, { portfolioJson: portfolio });
     return res.json({ ok: true, portfolio });
   }
+  if (portfolio.v === 2 || !validHoldings(portfolio)) return res.status(400).json({ error: 'Некорректный портфель' });
   if (!Array.isArray(portfolio.stocks)) portfolio.stocks = [];
   if (!Array.isArray(portfolio.crypto)) portfolio.crypto = [];
   if (portfolio.futuresValueRub == null) portfolio.futuresValueRub = 0;

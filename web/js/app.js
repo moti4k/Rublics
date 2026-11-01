@@ -74,6 +74,11 @@ function showAuth(show) {
 
 function showScreen(id) {
   if (!document.getElementById('screen-' + id)) return;
+  if (id !== 'runner' && typeof runnerEngine !== 'undefined' && runnerEngine.phase === 'playing') {
+    runnerStopLoop();
+    runnerEngine.phase = 'start';
+  }
+  if (id !== 'rugpull' && typeof stopRugpullTimer === 'function') stopRugpullTimer();
   if (id !== 'victorina-game' && typeof clearVictorinaTimers === 'function') clearVictorinaTimers();
   document.querySelectorAll('.screen').forEach(function (s) { s.classList.remove('active'); });
   var el = document.getElementById('screen-' + id);
@@ -316,10 +321,9 @@ function renderAnalytics() {
     '<button type="button" class="analytics-scope-btn' + (!useAll ? ' active' : '') + '" data-analytics-scope="active">Активный счёт</button>' +
     '<button type="button" class="analytics-scope-btn' + (useAll ? ' active' : '') + '" data-analytics-scope="all">Все счета</button></div>';
   var summaryActive = '<p class="flow-text">Активный счёт: <strong>' + escapeHtml(typeof getActivePortfolioAccountName === 'function' ? getActivePortfolioAccountName() : '') + '</strong>. Оценка: <strong>' + formatMoney(totalActive) + ' ₽</strong> (деньги + активы).</p>';
-  var summaryAll = '<p class="flow-text">Режим <strong>«Все счета»</strong>: суммарная оценка по всем игровым счетам — <strong>' + formatMoney(agg) + ' ₽</strong>. Диаграмма — доли <strong>акций, рублей на счетах</strong> и прочих активов (позиции по акциям суммированы).</p>';
+  var summaryAll = '<p class="flow-text">На всех счетах: <strong>' + formatMoney(agg) + ' ₽</strong>. Ниже — сколько денег свободно и сколько вложено.</p>';
   var pieTitle = useAll ? 'Структура капитала (все счета)' : 'Структура капитала (активный счёт)';
-  var roadmap = '<h3 class="subsection-title" style="margin-top:22px">По ТЗ (следующие итерации)</h3>' +
-    '<p class="flow-text subtle">График доходности с таймфреймами (день / месяц / год), общий доход за период, дивиденды и купоны, будущие выплаты, структура по отраслям и валютам, активные заявки — расширим после MVP.</p>';
+  var roadmap = '<p class="flow-text subtle" style="margin-top:22px">Здесь показана учебная оценка по доступным котировкам. Реальные дивиденды и купоны не начисляются.</p>';
   el.innerHTML = freeBanner + scopeBar + (useAll ? summaryAll : summaryActive) +
     (!useAll ? '<p class="flow-text subtle">Всего по счетам: <strong>' + formatMoney(agg) + ' ₽</strong> (для друзей и рейтинга).</p>' : '') +
     '<h3 class="subsection-title">' + pieTitle + '</h3>' +
@@ -500,6 +504,7 @@ var victorinaTimeMs = 0;
 var victorinaQStart = 0;
 var victorinaLocked = false;
 var victorinaExplainTimer = null;
+var victorinaRoundFinished = false;
 
 function clearVictorinaTimers() {
   if (victorinaTimer) {
@@ -520,6 +525,7 @@ function startVictorinaGame() {
   victorinaCorrect = 0;
   victorinaTimeMs = 0;
   victorinaLocked = false;
+  victorinaRoundFinished = false;
   clearVictorinaTimers();
   showScreen('victorina-game');
   showVictorinaQuestion();
@@ -598,6 +604,8 @@ function onVictorinaAnswer(choiceIndex, fromTimeout) {
 }
 
 function finishVictorinaRound() {
+  if (victorinaRoundFinished) return;
+  victorinaRoundFinished = true;
   clearVictorinaTimers();
   var won = victorinaCorrect >= 7;
   var timeSec = Math.max(1, Math.round(victorinaTimeMs / 1000));
@@ -606,15 +614,20 @@ function finishVictorinaRound() {
   if (won && timeSec < 150) xpGain += 15;
   var rublixGain = won ? 12 : 0;
   if (victorinaCorrect === 10) rublixGain += 8;
-  function applyRewardsAndShow(note) {
-    addVictorinaXp(xpGain);
-    if (rublixGain) addRublix(rublixGain);
+  function applyRewardsAndShow(note, accepted) {
+    if (accepted !== false) {
+      addVictorinaXp(xpGain);
+      if (rublixGain) addRublix(rublixGain);
+      var userStats = getUserStats();
+      userStats.quizCorrectCount += victorinaCorrect;
+      setUserStats(userStats);
+    }
     document.getElementById('victorinaResultTitle').textContent = won ? 'Победа в раунде!' : 'Раунд завершён';
     var stats = 'Верно: ' + victorinaCorrect + ' из 10. Время: ~' + timeSec + ' с.';
     if (!won) stats += ' Для победы нужно ≥7 верных.';
     document.getElementById('victorinaResultStats').textContent = stats;
-    var rw = '+' + xpGain + ' XP';
-    if (rublixGain) rw += ', +' + rublixGain + ' «Рубликсов»';
+    var rw = accepted === false ? 'Награды не начислены.' : '+' + xpGain + ' XP';
+    if (accepted !== false && rublixGain) rw += ', +' + rublixGain + ' «Рубликсов»';
     document.getElementById('victorinaResultRewards').textContent = rw + (note ? ' ' + note : '');
     showScreen('victorina-result');
   }
@@ -625,7 +638,7 @@ function finishVictorinaRound() {
         applyRewardsAndShow('');
       } else if (res.status === 429) {
         if (res.data && typeof res.data.playsToday === 'number') setVictorinaPlaysTodayCount(res.data.playsToday);
-        applyRewardsAndShow('(Сервер не засчитал игру: дневной лимит. Счётчик синхронизирован.)');
+        applyRewardsAndShow('(Сервер не засчитал игру: дневной лимит. Счётчик синхронизирован.)', false);
       } else {
         incrementVictorinaPlay();
         applyRewardsAndShow('');
@@ -1001,7 +1014,7 @@ document.addEventListener('visibilitychange', function () {
 
 function renderScaleBar() {
   const allScales = [
-    { id: 'allTime', label: 'Всё время' },
+    { id: 'allTime', label: 'История' },
     { id: 'months', label: 'Месяцы' },
     { id: 'days', label: 'Дни' },
     { id: 'hours', label: 'Часы' },
@@ -1027,14 +1040,23 @@ async function loadChart(appendOlder) {
     if (loadingEl) loadingEl.classList.remove('hidden');
     chartCandles = [];
   }
-  const candles = appendOlder && chartCandles.length
-    ? (await fetchOlderCandles(currentChartSecid, chartScale, chartCandles[0].time)).concat(chartCandles)
+  const previousRange = appendOlder && candleChart ? candleChart.timeScale().getVisibleLogicalRange() : null;
+  const previousLength = chartCandles.length;
+  const wasDemo = !!chartCandles.isDemo;
+  const fetched = appendOlder && chartCandles.length
+    ? await fetchOlderCandles(currentChartSecid, chartScale, chartCandles[0].time, wasDemo ? chartCandles[0].open : undefined)
     : await fetchCandles(currentChartSecid, chartScale);
   if (requestId !== chartRequestId) return;
-  if (!appendOlder) chartCandles = candles;
-  else if (candles.length > chartCandles.length) chartCandles = candles;
+  chartCandles = normalizeCandles(appendOlder ? fetched.concat(chartCandles) : fetched);
+  chartCandles.isDemo = appendOlder ? wasDemo : !!fetched.isDemo;
   if (loadingEl) loadingEl.classList.add('hidden');
-  const lastPrice = buildCharts('candlestickChart', 'volumeChart', chartCandles);
+  const added = chartCandles.length - previousLength;
+  const restoredRange = previousRange ? { from: previousRange.from + added, to: previousRange.to + added } : null;
+  const lastPrice = buildCharts('candlestickChart', 'volumeChart', chartCandles, chartScale, restoredRange);
+  const status = document.getElementById('chartDataStatus');
+  if (status) status.textContent = !chartCandles.length ? 'Нет данных для графика.' :
+    (chartCandles.isDemo ? 'Учебный график · сеть недоступна' : 'Свечи MOEX · исторические данные') +
+    (appendOlder && !fetched.length ? '. Более ранних данных нет или сеть недоступна.' : '');
   document.getElementById('chartPrice').textContent = lastPrice != null ? formatMoney(lastPrice) : '—';
   document.getElementById('btnBuyTicker').textContent = currentChartSecid;
   const loadOlderBtn = document.getElementById('btnLoadOlder');
@@ -1231,23 +1253,33 @@ function stopRugpullTimer() {
 
 function drawRugpullChart() {
   const canvas = document.getElementById('rugpullChart');
-  if (!canvas || rugpullHistory.length < 2) return;
+  if (!canvas) return;
   const ctx = canvas.getContext('2d');
-  const w = canvas.width;
-  const h = canvas.height;
+  const w = canvas.clientWidth || 300;
+  const h = 140;
+  const dpr = window.devicePixelRatio || 1;
+  canvas.width = Math.round(w * dpr);
+  canvas.height = Math.round(h * dpr);
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   ctx.clearRect(0, 0, w, h);
-  const min = Math.min(...rugpullHistory.filter(x => x > 0));
-  const max = Math.max(...rugpullHistory);
-  const range = max - min || 1;
+  if (rugpullHistory.length < 2) {
+    ctx.strokeStyle = '#B9A8C9';
+    ctx.beginPath(); ctx.moveTo(0, h / 2); ctx.lineTo(w, h / 2); ctx.stroke();
+    return;
+  }
   const lastCrashed = rugpullHistory[rugpullHistory.length - 1] === 0;
-  ctx.strokeStyle = lastCrashed ? '#cf363b' : '#0a0';
+  const min = lastCrashed ? 0 : Math.min(...rugpullHistory) * 0.98;
+  const max = Math.max(...rugpullHistory) * 1.02;
+  const range = max - min || 1;
+  ctx.strokeStyle = lastCrashed ? '#AE3E35' : '#26704F';
   ctx.lineWidth = 2;
+  ctx.lineJoin = 'round';
   ctx.beginPath();
   const stepX = w / (rugpullHistory.length - 1);
   for (let i = 0; i < rugpullHistory.length; i++) {
     const v = rugpullHistory[i];
     const x = i * stepX;
-    const y = v === 0 ? h : h - ((v - min) / range) * (h * 0.9) - h * 0.05;
+    const y = h - 8 - ((v - min) / range) * (h - 16);
     if (i === 0) ctx.moveTo(x, y);
     else ctx.lineTo(x, y);
   }
@@ -1392,7 +1424,7 @@ if (btnShr) {
       navigator.share({ title: title, text: 'Смотрю бумагу ' + currentChartSecid + ' в Рубликс', url: url }).catch(function () {});
     } else if (navigator.clipboard && url) {
       navigator.clipboard.writeText(url).then(function () { alert('Ссылка на страницу скопирована'); }).catch(function () { alert('Не удалось скопировать ссылку'); });
-    }
+    } else if (url) prompt('Скопируй ссылку на Рубликс:', url);
   });
 }
 
@@ -1798,7 +1830,7 @@ function runnerStartLoop() {
     last = now;
     runnerEngine.gamePlayTime += dt;
     var speed = runnerEngine.baseSpeed * (1.0 + Math.min(runnerEngine.gamePlayTime * runnerEngine.speedGrowthPerSecond, runnerEngine.maxSpeedMultiplier - 1.0));
-    runnerEngine.groundOffset = (runnerEngine.groundOffset + speed) % 0.08;
+    runnerEngine.groundOffset = (runnerEngine.groundOffset + speed * 60 * dt) % 0.08;
     runnerEngine.characterVelocity += runnerEngine.gravity * 60 * dt;
     if (runnerEngine.isCrouching && runnerEngine.characterY < runnerEngine.groundY) {
       runnerEngine.characterVelocity += runnerEngine.crouchDropBoost * 60 * dt;
@@ -2284,7 +2316,8 @@ function renderProfile() {
 document.getElementById('btnAddFriend').addEventListener('click', function () {
   var email = (document.getElementById('friendEmail') && document.getElementById('friendEmail').value || '').trim();
   var optionalName = (document.getElementById('friendName') && document.getElementById('friendName').value || '').trim();
-  if (!email) return;
+  var emailInput = document.getElementById('friendEmail');
+  if (!email || !emailInput.reportValidity()) return;
   var result = addFriendByEmail(email, optionalName);
   function done() {
     if (document.getElementById('friendEmail')) document.getElementById('friendEmail').value = '';
@@ -2422,6 +2455,9 @@ document.getElementById('btnLoadOlder').addEventListener('click', async () => {
 });
 
 window.addEventListener('resize', resizeCharts);
+window.addEventListener('resize', function () {
+  if (document.getElementById('screen-rugpull').classList.contains('active')) drawRugpullChart();
+});
 
 // ——— Character modal ———
 function openCharacterModal() {

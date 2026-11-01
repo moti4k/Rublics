@@ -1,11 +1,17 @@
 const { test, expect } = require('@playwright/test');
 
 test.beforeEach(async ({ page }) => {
+  page.runtimeErrors = [];
+  page.on('pageerror', error => page.runtimeErrors.push(error.message));
   // Network failure exercises the built-in demo fallback, without depending on MOEX uptime.
   await page.route('https://iss.moex.com/**', route => route.abort());
   await page.route(/https:\/\/fonts\.(googleapis|gstatic)\.com\//, route => route.fulfill({ body: '', contentType: 'text/css' }));
   await page.goto('/', { waitUntil: 'domcontentloaded' });
   await expect(page.locator('#screen-onboarding')).toBeVisible();
+});
+
+test.afterEach(async ({ page }) => {
+  expect(page.runtimeErrors).toEqual([]);
 });
 
 async function enter(page) {
@@ -246,4 +252,298 @@ test('illustrated avatar presets and every appearance slot survive reload', asyn
   await page.getByRole('button', { name: 'Кэжуал', exact: true }).click();
   await page.locator('#characterCancel').click();
   expect(await page.evaluate(() => getCharacterAppearance())).toEqual(saved);
+});
+
+test('search, sort, favorites and parent report', async ({ page }) => {
+  await enter(page);
+  await page.locator('#linkAllStocks').click();
+  await page.locator('#stocksSearchInput').fill('SBER');
+  await expect(page.locator('#stocksFullList .stock-row')).toHaveCount(1);
+  await page.locator('#btnStocksSortAlpha').click();
+  await page.locator('#stocksFullList .stock-row').click();
+  await page.locator('#btnSecurityFav').click();
+  await page.locator('#btnBackChart').click();
+  await page.locator('[data-tab="home"]').click();
+  await page.locator('#homeSubFav').click();
+  await expect(page.locator('#homeFavoritesList')).toContainText('SBER');
+  await page.reload({ waitUntil: 'domcontentloaded' });
+  await page.locator('#homeSubFav').click();
+  await expect(page.locator('#homeFavoritesList')).toContainText('SBER');
+  await page.locator('#homeSubMain').click();
+  await page.locator('#linkParentReport').click();
+  await expect(page.locator('#parentReportBody')).not.toBeEmpty();
+});
+
+test('invalid and unaffordable trades do not change money', async ({ page }) => {
+  await enter(page);
+  const before = await page.evaluate(() => getBalance());
+  await page.locator('.stock-chip').first().click();
+  await page.locator('#btnBuyStock').click();
+  for (const quantity of ['0', '-1', 'abc', '1e309', '999999999']) {
+    await page.locator('#purchaseQty').fill(quantity);
+    await page.locator('#btnPurchase').click();
+    await expect(page.locator('#purchaseMessage')).toHaveClass(/error/);
+    expect(await page.evaluate(() => getBalance())).toBe(before);
+  }
+  expect(await page.evaluate(() => getPortfolio().stocks)).toEqual([]);
+});
+
+test('runner collects coins, ends after collisions, and persists best score', async ({ page }) => {
+  await enter(page);
+  await page.clock.install();
+  await page.locator('[data-tab="game"]').click();
+  await page.locator('[data-game="runner"]').click();
+  await page.locator('#runnerBtnStart').click();
+  await page.evaluate(() => runnerEngine.items = [{ id: 1, x: .22, y: .78, type: 'coin' }]);
+  await page.clock.runFor(40);
+  expect(await page.evaluate(() => runnerEngine.score)).toBe(10);
+  for (let i = 0; i < 3; i++) {
+    await page.evaluate(() => runnerEngine.items = [{ id: 2, x: .22, y: .78, type: 'rock' }]);
+    await page.clock.runFor(40);
+  }
+  await expect(page.locator('#runnerContent')).toContainText('Стоп!');
+  expect(await page.evaluate(() => getRunnerBestScore())).toBe(10);
+  await page.reload({ waitUntil: 'domcontentloaded' });
+  expect(await page.evaluate(() => getRunnerBestScore())).toBe(10);
+});
+
+test('leaving games cancels timers through any navigation path', async ({ page }) => {
+  await enter(page);
+  await page.locator('[data-tab="game"]').click();
+  await page.locator('[data-game="runner"]').click();
+  await page.locator('#runnerBtnStart').click();
+  await page.evaluate(() => showScreen('home'));
+  expect(await page.evaluate(() => ({ phase: runnerEngine.phase, timer: runnerEngine.spawnTimer }))).toEqual({ phase: 'start', timer: null });
+  await page.locator('[data-tab="game"]').click();
+  await page.locator('[data-game="rugpull"]').click();
+  await page.evaluate(() => { Math.random = () => .5; });
+  await page.locator('#rugpullInvest').click();
+  await page.evaluate(() => showScreen('home'));
+  expect(await page.evaluate(() => rugpullTimer)).toBeNull();
+});
+
+test('rugpull crash and invalid bets preserve the correct balance', async ({ page }) => {
+  await enter(page);
+  await page.locator('[data-tab="game"]').click();
+  await page.locator('[data-game="rugpull"]').click();
+  const before = await page.evaluate(() => getRugpullBalance());
+  for (const bet of ['-1', '0', 'Infinity', '999999999']) {
+    await page.locator('#rugpullBet').fill(bet);
+    await page.locator('#rugpullInvest').click();
+    expect(await page.evaluate(() => getRugpullBalance())).toBe(before);
+  }
+  await page.evaluate(() => { Math.random = () => 0; });
+  await page.locator('#rugpullBet').fill('1000');
+  await page.locator('#rugpullInvest').click();
+  await expect(page.locator('#rugpullCrashed')).toBeVisible();
+  expect(await page.evaluate(() => getRugpullBalance())).toBe(before - 1000);
+  const crashedChart = await page.locator('#rugpullChart').evaluate(canvas => canvas.toDataURL());
+  await page.locator('#rugpullPlayAgain').click();
+  expect(await page.evaluate(() => getRugpullBalance())).toBe(before - 1000);
+  expect(await page.locator('#rugpullChart').evaluate(canvas => canvas.toDataURL())).not.toBe(crashedChart);
+});
+
+test('help, earnings shortcut and share without clipboard work', async ({ page }) => {
+  await enter(page);
+  await page.locator('#btnHeaderHelp').click();
+  await expect(page.locator('#headerHelpModal')).toBeVisible();
+  await page.locator('#headerHelpModalDone').click();
+  await page.locator('#pillPortfolioAll').click();
+  await expect(page.locator('#pillPortfolioAll')).toHaveClass(/active/);
+  await page.locator('#pillPortfolioDay').click();
+  await expect(page.locator('#pillPortfolioDay')).toHaveClass(/active/);
+  await page.locator('#btnHomeEarn').click();
+  await expect(page.locator('#screen-education')).toBeVisible();
+  await page.locator('[data-tab="home"]').click();
+  await page.locator('.stock-chip').first().click();
+  await page.evaluate(() => {
+    Object.defineProperty(navigator, 'share', { value: undefined, configurable: true });
+    Object.defineProperty(navigator, 'clipboard', { value: undefined, configurable: true });
+  });
+  const dialogPromise = page.waitForEvent('dialog').then(async dialog => {
+    expect(dialog.defaultValue()).toContain('127.0.0.1');
+    await dialog.dismiss();
+  });
+  await Promise.all([dialogPromise, page.locator('#btnSecurityShare').click()]);
+});
+
+test('quiz timeout and daily limit are visible', async ({ page }) => {
+  await enter(page);
+  await page.clock.install();
+  await page.locator('[data-tab="game"]').click();
+  await page.locator('[data-game="victorina"]').click();
+  await page.locator('#btnVictorinaStart').click();
+  await page.clock.runFor(20001);
+  await expect(page.locator('#victorinaExplain')).toContainText('Время вышло');
+  await page.evaluate(() => { setVictorinaPlaysTodayCount(5); showScreen('victorina-entry'); });
+  await expect(page.locator('#btnVictorinaStart')).toBeDisabled();
+  await expect(page.locator('#victorinaPlaysLeft')).toHaveText('0');
+});
+
+test('server rejection does not grant rewards or repeat the round', async ({ page }) => {
+  await enter(page);
+  const result = await page.evaluate(async () => {
+    const user = getCurrentUser();
+    authApi.isUsingBackend = () => true;
+    authApi.getCurrentUserSync = () => user;
+    authApi.postQuizComplete = () => Promise.resolve({ ok: false, status: 429, data: { playsToday: 25 } });
+    victorinaCorrect = 10;
+    victorinaTimeMs = 10000;
+    victorinaRoundFinished = false;
+    const before = getVictorinaXp();
+    finishVictorinaRound();
+    await Promise.resolve();
+    finishVictorinaRound();
+    return { before, after: getVictorinaXp() };
+  });
+  expect(result.after).toBe(result.before);
+  await expect(page.locator('#victorinaResultRewards')).toContainText('Награды не начислены');
+});
+
+test('MOEX response with duplicate candles still draws a chart', async ({ page }) => {
+  await enter(page);
+  await page.route('https://iss.moex.com/**/candles.json?*', route => route.fulfill({ json: {
+    candles: { columns: ['begin', 'open', 'high', 'low', 'close', 'volume'], data: [
+      ['2026-10-29T12:00:00Z', 250, 255, 245, 252, 1000],
+      ['2026-10-30T12:00:00Z', 252, 259, 250, 257, 1200],
+      ['2026-10-30T12:00:00Z', 252, 260, 250, 258, 1300],
+      ['2026-10-28T12:00:00Z', 0, 255, 245, 252, 1000],
+      ['2026-10-27T12:00:00Z', 250, 240, 245, 252, 1000]
+    ] }
+  } }));
+  await page.locator('.stock-chip').first().click();
+  await expect(page.locator('#candlestickChart canvas').first()).toBeVisible();
+  expect(await page.evaluate(() => chartCandles.length)).toBe(2);
+  await expect(page.locator('#chartDataStatus')).toContainText('MOEX');
+  await page.locator('#btnLoadOlder').click();
+  await expect(page.locator('#btnLoadOlder')).toBeEnabled();
+});
+
+test('all chart periods, synchronized zoom, resize and older history', async ({ page }) => {
+  await enter(page);
+  await page.evaluate(() => setSubscriptionId('pro'));
+  await page.locator('.stock-chip').first().click();
+  await expect(page.locator('#chartDataStatus')).toContainText('Учебный график');
+  for (const scale of ['allTime', 'months', 'days', 'hours', 'minutes']) {
+    await page.locator('[data-scale="' + scale + '"]').click();
+    await expect.poll(() => page.evaluate(() => document.getElementById('chartLoading').classList.contains('hidden'))).toBe(true);
+    const result = await page.evaluate(() => ({
+      times: chartCandles.map(c => c.time),
+      close: chartCandles[chartCandles.length - 1].close,
+      price: stocks.find(s => s.ticker === currentChartSecid).price,
+      intraday: candleChart.options().timeScale.timeVisible
+    }));
+    expect(result.close).toBeCloseTo(result.price, 6);
+    expect(result.times[1] - result.times[0]).toBe(scale === 'minutes' ? 600 : scale === 'hours' ? 3600 : 86400);
+    expect(result.intraday).toBe(['hours', 'minutes'].includes(scale));
+  }
+  await page.evaluate(() => candleChart.timeScale().setVisibleLogicalRange({ from: 10, to: 25 }));
+  await expect.poll(() => page.evaluate(() => Math.round(volumeChart.timeScale().getVisibleLogicalRange().from))).toBe(10);
+  await page.evaluate(() => volumeChart.timeScale().setVisibleLogicalRange({ from: 15, to: 30 }));
+  await expect.poll(() => page.evaluate(() => Math.round(candleChart.timeScale().getVisibleLogicalRange().from))).toBe(15);
+  const before = await page.evaluate(() => candleChart.timeScale().getVisibleRange());
+  await page.locator('#btnLoadOlder').click();
+  await expect(page.locator('#btnLoadOlder')).toBeEnabled();
+  await expect.poll(() => page.evaluate(() => candleChart.timeScale().getVisibleRange())).toEqual(before);
+  // Graph must recover after being hidden while its container changes size.
+  await page.locator('[data-sec-tab="news"]').click();
+  await page.setViewportSize({ width: 375, height: 812 });
+  await page.locator('[data-sec-tab="overview"]').click();
+  await expect.poll(() => page.evaluate(() => Math.abs(candleChart.options().width - document.getElementById('candlestickChart').clientWidth))).toBeLessThan(2);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+});
+
+test('empty chart has a clear state and recovers on reload', async ({ page }) => {
+  await enter(page);
+  await page.evaluate(() => { fetchCandles = async () => []; });
+  await page.locator('.stock-chip').first().click();
+  await expect(page.locator('#chartDataStatus')).toHaveText('Нет данных для графика.');
+  await expect(page.locator('#btnLoadOlder')).toBeHidden();
+  await expect(page.locator('#candlestickChart canvas')).toHaveCount(0);
+  await page.reload({ waitUntil: 'domcontentloaded' });
+  await page.locator('.stock-chip').first().click();
+  await expect(page.locator('#candlestickChart canvas').first()).toBeVisible();
+});
+
+test('chart dates are independent of the device timezone', async ({ page }) => {
+  const result = await page.evaluate(() => ({
+    day: moexCandleTime('2026-10-30 00:00:00', 'days'),
+    intraday: moexCandleTime('2026-10-30 10:20:00', 'minutes'),
+    invalid: Number.isNaN(moexCandleTime('broken', 'hours'))
+  }));
+  expect(result.day).toBe(Date.parse('2026-10-30T12:00:00Z') / 1000);
+  expect(result.intraday).toBe(Date.parse('2026-10-30T07:20:00Z') / 1000);
+  expect(result.invalid).toBe(true);
+});
+
+test('accounts keep independent positions and analytics totals match', async ({ page }) => {
+  await enter(page);
+  const original = await page.evaluate(() => {
+    setSubscriptionId('pro');
+    return { id: getPortfolioAccounts()[0].id, cash: getBalance() };
+  });
+  await page.locator('#portfolioAccountChip').click();
+  page.once('dialog', dialog => dialog.accept('Практика'));
+  await page.locator('#btnCreatePortfolioAccount').click();
+  await page.locator('#portfolioAccountsModalDone').click();
+  await page.locator('.stock-chip').first().click();
+  await page.locator('#btnBuyStock').click();
+  await page.locator('#purchaseQty').fill('1');
+  await page.locator('#btnPurchase').click();
+  await expect(page.locator('#purchaseMessage')).toContainText('Успех');
+  await page.evaluate(() => showScreen('analytics'));
+  await expect(page.locator('.analytics-pie-legend li')).toHaveCount(2);
+  const total = await page.evaluate(() => getAggregatedWealthRub(stocks, CRYPTO_PRICES));
+  expect(total).toBeCloseTo(original.cash + 100000, 2);
+  await page.locator('[data-analytics-scope="active"]').click();
+  await expect(page.locator('#analyticsRoot')).toContainText('100 000,00');
+  const positions = await page.evaluate(id => { setActivePortfolioAccount(id); return { cash: getBalance(), stocks: getPortfolio().stocks }; }, original.id);
+  expect(positions.cash).toBe(original.cash);
+  expect(positions.stocks).toEqual([]);
+});
+
+test('every article, topic and question has usable content', async ({ page }) => {
+  await enter(page);
+  const result = await page.evaluate(() => {
+    const errors = [];
+    for (const q of [...DATA.quizItems, ...DATA.choiceItems]) {
+      if (!q.question || !q.explanation || !q.options[q.correctAnswerIndex]) errors.push(q.question || 'Empty question');
+    }
+    for (const q of DATA.victorinaQuestions) {
+      if (!q.explanation || ![0, 1, 2].includes(q.correct)) errors.push('Market quiz: ' + q.id);
+    }
+    for (const article of DATA.newsArticles) {
+      renderArticle(article.id);
+      if (!document.querySelector('#articleView h1') || !article.paragraphs.length) errors.push(article.id);
+    }
+    for (const topic of DATA.topics) {
+      renderTopicDetail(topic.id);
+      if (!DATA.topicDetails[topic.id].paragraphs.length) errors.push(topic.id);
+    }
+    return errors;
+  });
+  expect(result).toEqual([]);
+});
+
+test('failed login preserves an existing server session', async ({ page }) => {
+  const result = await page.evaluate(async () => {
+    const email = 'session-' + Date.now() + Math.random().toString(36).slice(2) + '@example.test';
+    await authApi.register(email, 'test-password', 'Session test');
+    const token = localStorage.getItem('rubliks_api_token');
+    let rejected = false;
+    try { await authApi.login(email, 'wrong-password'); } catch (_) { rejected = true; }
+    return { rejected, sameToken: token === localStorage.getItem('rubliks_api_token'), email: (await authApi.getMe()).email, expected: email };
+  });
+  expect(result.rejected).toBe(true);
+  expect(result.sameToken).toBe(true);
+  expect(result.email).toBe(result.expected);
+});
+
+test('damaged local portfolio does not break startup', async ({ page }) => {
+  await enter(page);
+  await page.evaluate(() => lsSetScoped('rubliks_portfolio', JSON.stringify({ v: 2, accounts: [null, { id: 'broken', balanceRub: 'NaN', holdings: { stocks: [null] } }] })));
+  await page.reload({ waitUntil: 'domcontentloaded' });
+  await expect(page.locator('#screen-home')).toBeVisible();
+  expect(await page.evaluate(() => getBalance())).toBe(0);
+  expect(await page.evaluate(() => getPortfolio().stocks)).toEqual([]);
 });

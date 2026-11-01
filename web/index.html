@@ -334,6 +334,7 @@
               <div id="candlestickChart" class="chart-inner"></div>
               <div id="volumeChart" class="chart-inner chart-volume"></div>
             </div>
+            <p class="flow-text subtle" id="chartDataStatus" role="status"></p>
             <button type="button" class="link-load-older hidden" id="btnLoadOlder">Загрузить более старые данные</button>
             <p class="flow-text subtle">Графики: <a href="https://www.tradingview.com/" target="_blank" rel="noopener noreferrer">TradingView Lightweight Charts™</a></p>
             <section class="security-about">
@@ -509,7 +510,7 @@
         <div class="add-friend-section">
           <h3 class="subsection-title">Добавить в друзья</h3>
           <div class="add-friend-row">
-            <input type="email" id="friendEmail" class="input input-inline" placeholder="Email друга">
+            <input type="email" id="friendEmail" class="input input-inline" placeholder="Email друга" aria-label="Email друга" required>
             <input type="text" id="friendName" class="input input-inline optional" placeholder="Имя (необязательно)">
             <button type="button" class="btn-add-friend" id="btnAddFriend" aria-label="Добавить">+</button>
           </div>

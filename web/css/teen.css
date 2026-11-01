@@ -71,6 +71,42 @@ body { background: #FFFDFA; }
 .character-option-row:hover, .character-preset:hover { background: #F3EDF8; }
 .modal-character .modal-actions { position: sticky; bottom: -24px; padding: 12px 0; background: white; z-index: 2; }
 .runner-character-inner .character-art { overflow: visible; }
+.rugpull-chart-wrap { background: #F5F0F9; border: 1px solid #E4DDE8; box-shadow: none; border-radius: 12px; }
+.rugpull-chart-wrap canvas { height: 140px; }
+.rugpull-multiplier { text-shadow: none; color: #26704F; }
+.rugpull-balance { border-color: #E4DDE8; box-shadow: none; }
+/* Shared treatment for secondary screens, forms, feedback and modal controls. */
+.flow-inner, .purchase-form, .sec-panel-inner, .topic-detail-content { font-size: 14px; line-height: 1.55; }
+.nav-title { font-size: 18px; font-weight: 700; }
+.page-title { font-size: 22px; margin-bottom: 20px; }
+.nav-bar-inner { border-bottom-color: #E7E1DD; }
+.btn-back { color: #583781; border-radius: 7px; }
+.input, .auth-input, .stocks-search-input, #friendsRanking { font-family: var(--font-sans); border: 1px solid #DDD5E4; border-radius: 8px; background: #FFF; min-height: 44px; }
+.input:focus-visible, .auth-input:focus-visible, .stocks-search-input:focus-visible { outline: 2px solid #A58BBE; outline-offset: 2px; }
+.btn-sort-chip, .chart-scale-btn, .sec-tab, .analytics-scope-btn { border-radius: 7px; font-family: var(--font-sans); font-size: 12px; }
+.chart-scale-btn.active, .sec-tab.active, .analytics-scope-btn.active { background: #F1EAF7; color: #583781; border-color: #CDBBDD; box-shadow: none; }
+.link-load-older { border-radius: 9px; }
+.chart-card, .article-view, .topic-section, .lesson-row, .subscription-card, .friend-row { border-radius: 10px; box-shadow: none; }
+.friend-row { background: #FFF; border-color: #E7E1DD; }
+.friend-row.is-me { background: #F3EDF8; }
+.article-view h1 { font-size: 25px; line-height: 1.2; }
+.article-view p, .topic-paragraph { line-height: 1.65; }
+.flow-text { line-height: 1.55; }
+.message, .auth-error { font-size: 13px; line-height: 1.5; }
+.message.error, .auth-error { color: #AE3E35; }
+.message.success { color: #26704F; }
+.quiz-option { border-radius: 9px; font-family: var(--font-sans); font-size: 14px; }
+.quiz-option.correct { background: #E8F4EB; }
+.quiz-option.wrong { background: #FBECE8; }
+.victorina-timer-wrap { border-radius: 7px; }
+.btn-victorina { font-family: var(--font-sans); }
+.subscription-plan-item { border-radius: 10px; }
+.subscription-plan-item.selected { border-color: #8A6AA7; }
+.modal-title { font-size: 19px; }
+.modal-content { background: #FFF; }
+.auth-screen { background: #FFFDFA; }
+.auth-header { background: #583781; border-radius: 0 0 20px 20px; box-shadow: none; }
+.auth-card { box-shadow: none; border-radius: 12px; border: 1px solid #E7E1DD; }
 @media (min-width: 1000px) {
   .tab-bar { background: #FFFDFA; }
   .home-intro { align-items: center; }

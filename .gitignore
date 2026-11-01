@@ -3,6 +3,7 @@ build/
 DerivedData/
 *.db
 *.db-*
+*.db.tmp
 *.sqlite*
 .DS_Store
 ._*

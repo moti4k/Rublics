@@ -15,7 +15,7 @@ function saveDb() {
     fs.writeFileSync(dbPath + '.tmp', Buffer.from(data), { mode: 0o600 });
     fs.renameSync(dbPath + '.tmp', dbPath);
   } catch (e) {
-    console.warn('DB save failed:', e.message);
+    throw new Error('Не удалось сохранить базу: ' + e.message);
   }
 }
 
@@ -91,6 +91,7 @@ function migrateUserStatsColumns() {
 
 async function init() {
   if (db) return;
+  fs.mkdirSync(path.dirname(dbPath), { recursive: true });
   SQL = await initSqlJs();
   let buffer = null;
   try {
