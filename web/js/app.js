@@ -74,6 +74,7 @@ function showAuth(show) {
 
 function showScreen(id) {
   if (!document.getElementById('screen-' + id)) return;
+  characterMotion.clear();
   if (id !== 'runner' && typeof runnerEngine !== 'undefined' && runnerEngine.phase === 'playing') {
     runnerStopLoop();
     runnerEngine.phase = 'start';
@@ -596,6 +597,10 @@ function onVictorinaAnswer(choiceIndex, fromTimeout) {
     ex.classList.remove('hidden');
   }
   var delay = ok ? 1000 : 3200;
+  characterMotion.react(ok ? 'correct' : 'think', {
+    anchor: '#victorinaExplain', duration: ok ? 900 : 2400,
+    text: ok ? 'Дай пять! Логика на месте.' : (fromTimeout ? 'Часы убежали. Я тоже не догнал.' : 'Почешем затылок и разберёмся.')
+  });
   if (q.explanation && String(q.explanation).length > 140) delay += 600;
   victorinaExplainTimer = setTimeout(function () {
     victorinaIdx += 1;
@@ -630,6 +635,10 @@ function finishVictorinaRound() {
     if (accepted !== false && rublixGain) rw += ', +' + rublixGain + ' «Рубликсов»';
     document.getElementById('victorinaResultRewards').textContent = rw + (note ? ' ' + note : '');
     showScreen('victorina-result');
+    characterMotion.react(won && accepted !== false ? 'victory' : 'careful', {
+      anchor: '#victorinaResultRewards',
+      text: accepted === false ? 'Сегодня лимит. Мозгу тоже нужен перерыв.' : (won ? 'Мозг сделал левел-ап. Танец заслужен!' : 'Опыт забрали. Рекорд ещё впереди.')
+    });
   }
   if (typeof authApi !== 'undefined' && authApi.isUsingBackend && authApi.isUsingBackend()) {
     authApi.postQuizComplete({ correctCount: victorinaCorrect, totalTimeSec: timeSec, won: won }).then(function (res) {
@@ -756,6 +765,7 @@ function renderHomeFavorites() {
 
 function renderHome() {
   renderCharacterAvatar(document.getElementById('homeCharacterAvatar'), getCharacterAppearance(), 104, { fullBody: true });
+  characterMotion.greet(document.getElementById('homeCharacterAvatar'));
   var subMain = document.getElementById('homeSubMain');
   var subFav = document.getElementById('homeSubFav');
   if (subMain) {
@@ -1141,14 +1151,22 @@ async function doPurchase() {
   const ticker = document.getElementById('purchaseTicker').value;
   const qty = Number((document.getElementById('purchaseQty').value || '0').replace(',', '.'));
   const msgEl = document.getElementById('purchaseMessage');
-  if (!Number.isFinite(qty) || qty <= 0) { msgEl.textContent = 'Введите корректное количество'; msgEl.className = 'message error'; return; }
+  if (!Number.isFinite(qty) || qty <= 0) {
+    msgEl.textContent = 'Введите корректное количество'; msgEl.className = 'message error';
+    characterMotion.react('think', { anchor: '#purchaseQty', text: 'Так, тут нужно число больше нуля.' });
+    return;
+  }
   const accountId = loadBundleFromStorage().activeId;
   const price = await fetchCurrentPrice(ticker) || (stocks.find(s => s.ticker === ticker)?.price) || 0;
   if (price <= 0) { msgEl.textContent = 'Не удалось получить цену'; msgEl.className = 'message error'; return; }
   const cost = price * qty;
   if (!Number.isFinite(cost) || loadBundleFromStorage().activeId !== accountId) return;
   const balance = getBalance();
-  if (cost > balance) { msgEl.textContent = 'Недостаточно средств на выбранном счёте'; msgEl.className = 'message error'; return; }
+  if (cost > balance) {
+    msgEl.textContent = 'Недостаточно средств на выбранном счёте'; msgEl.className = 'message error';
+    characterMotion.react('careful', { anchor: '#purchaseQty', text: 'Карман проверил. На столько пока не хватит.' });
+    return;
+  }
   setBalance(balance - cost);
   const portfolio = getPortfolio();
   const i = portfolio.stocks.findIndex(h => h.ticker === ticker);
@@ -1170,6 +1188,7 @@ async function doPurchase() {
   msgEl.className = 'message success';
   renderHome();
   renderPurchase();
+  characterMotion.react('buy', { anchor: '#purchaseMessage', text: 'Бумага в портфеле! Место в кармане нашлось.' });
   setTimeout(() => { msgEl.textContent = ''; }, 2000);
   } finally {
     purchasePending = false;
@@ -1231,6 +1250,7 @@ function rugpullTick() {
     setRugpullBalance(rugpullBalance);
     renderRugpull();
     stopRugpullTimer();
+    characterMotion.react('bump', { anchor: '#rugpullChart', text: 'Вот и риск. Хорошо, что деньги учебные.' });
     return;
   }
   rugpullMultiplier *= (RUGPULL_GROWTH[0] + Math.random() * (RUGPULL_GROWTH[1] - RUGPULL_GROWTH[0]));
@@ -1304,6 +1324,9 @@ function rugpullInvest() {
     startRugpullTimer();
   }
   renderRugpull();
+  characterMotion.react(rugpullPhase === 'crashed' ? 'bump' : 'careful', {
+    anchor: '#rugpullChart', text: rugpullPhase === 'crashed' ? 'Вот и риск. Хорошо, что деньги учебные.' : 'Выглядит бодро. Но пол может исчезнуть.'
+  });
 }
 
 function rugpullSell() {
@@ -1316,6 +1339,7 @@ function rugpullSell() {
   rugpullHistory = [1];
   setRugpullBalance(rugpullBalance);
   renderRugpull();
+  characterMotion.react('relief', { anchor: '#rugpullChart', text: 'Фух, вышли. От риска это всё равно не лечит.' });
 }
 
 function renderRugpull() {
@@ -1645,6 +1669,7 @@ function renderQuizStep() {
     setUserStats(stats);
     container.innerHTML = '<div class="quiz-play-area"><div class="quiz-done quiz-done-card"><p class="quiz-done-eyebrow">Готово</p><h3 class="quiz-done-title">Результат</h3><p class="quiz-result">' + quizState.correct + ' из ' + items.length + ' верных</p><button type="button" class="btn-primary" id="quizClose">Закрыть</button></div></div>';
     document.getElementById('quizClose').addEventListener('click', function () { showScreen('game'); });
+    characterMotion.react('victory', { anchor: '#quizClose', text: 'Разобрались! Зарядка для мозга засчитана.' });
     return;
   }
   var item = items[quizState.index];
@@ -1678,6 +1703,7 @@ function renderQuizStep() {
     '<div class="quiz-options">' + opts + '</div>' + nextBtn + '</div>';
   var wrap = document.getElementById('quizAvatarWrap');
   if (wrap) renderCharacterAvatar(wrap, appearance, 56, { emotion: quizState.showExplanation ? (quizState.selected === item.correctAnswerIndex ? 'happy' : 'thinking') : 'neutral' });
+  if (quizState.showExplanation) characterMotion.play(wrap, quizState.selected === item.correctAnswerIndex ? 'correct' : 'think');
   if (!quizState.showExplanation) {
     container.querySelectorAll('.quiz-option').forEach(function (btn) {
       btn.addEventListener('click', function () {
@@ -1720,6 +1746,7 @@ function renderChoiceStep() {
   if (choiceState.index >= items.length) {
     el.innerHTML = '<div class="quiz-play-area"><div class="quiz-done quiz-done-card"><p class="quiz-done-eyebrow">Финансовый выбор</p><h3 class="quiz-done-title">Ситуации пройдены</h3><p class="quiz-result">Разобрано: ' + items.length + '</p><button type="button" class="btn-primary" id="choiceClose">Закрыть</button></div></div>';
     document.getElementById('choiceClose').addEventListener('click', function () { showScreen('game'); });
+    characterMotion.react('victory', { anchor: '#choiceClose', text: 'Ситуации разобрали. Затылок тоже почесали.' });
     return;
   }
   var item = items[choiceState.index];
@@ -1751,7 +1778,8 @@ function renderChoiceStep() {
     (expl || '') +
     '<div class="quiz-options">' + opts + '</div>' + nextBtn + '</div>';
   var wrap = document.getElementById('choiceAvatarWrap');
-  if (wrap) renderCharacterAvatar(wrap, appearance, 56);
+  if (wrap) renderCharacterAvatar(wrap, appearance, 56, { emotion: choiceState.showExplanation ? (choiceState.selected === item.correctAnswerIndex ? 'happy' : 'thinking') : 'neutral' });
+  if (choiceState.showExplanation) characterMotion.play(wrap, choiceState.selected === item.correctAnswerIndex ? 'correct' : 'think');
   if (!choiceState.showExplanation) {
     el.querySelectorAll('.choice-option').forEach(function (btn) {
       btn.addEventListener('click', function () {
@@ -1857,6 +1885,7 @@ function runnerStartLoop() {
         var overlapY = charBottom > item.y - runnerEngine.coinR && charTop < item.y + runnerEngine.coinR;
         if (overlapX && overlapY) {
           runnerEngine.score += 10;
+          characterMotion.play(document.querySelector('.runner-character-inner'), 'coin');
           continue;
         }
       } else if (item.type === 'rock') {
@@ -1864,6 +1893,7 @@ function runnerStartLoop() {
         var rLeft = item.x - runnerEngine.rockSize / 2, rRight = item.x + runnerEngine.rockSize / 2;
         if (charRight > rLeft && charLeft < rRight && charBottom > rTop && charTop < rBottom) {
           runnerEngine.lives--;
+          characterMotion.play(document.querySelector('.runner-character-inner'), 'bump');
           if (runnerEngine.lives <= 0) {
             if (runnerEngine.score > runnerEngine.bestScore) {
               runnerEngine.bestScore = runnerEngine.score;
@@ -1915,10 +1945,12 @@ function runnerStopLoop() {
 function runnerJump() {
   if (runnerEngine.phase !== 'playing' || runnerEngine.characterY < runnerEngine.groundY - 0.01) return;
   runnerEngine.characterVelocity = runnerEngine.jumpForce;
+  characterMotion.play(document.querySelector('.runner-character-inner'), 'jump');
 }
 
 function runnerSetCrouch(v) {
   runnerEngine.isCrouching = v;
+  if (v) characterMotion.stop(document.querySelector('.runner-character-inner'));
 }
 
 function runnerRenderGame() {
@@ -1936,6 +1968,8 @@ function runnerRenderGame() {
     charEl.style.top = (runnerEngine.characterY * h - charHNorm * h / 2) + 'px';
     charEl.style.transform = runnerEngine.isCrouching ? 'scaleY(0.5)' : 'scaleY(1)';
     charEl.style.transformOrigin = 'center bottom';
+    characterMotion.runStep(charEl.querySelector('.runner-character-inner'), runnerEngine.gamePlayTime,
+      runnerEngine.isCrouching, runnerEngine.characterY < runnerEngine.groundY - .01);
   }
   var itemsEl = document.getElementById('runnerItems');
   if (itemsEl) {
@@ -1985,6 +2019,7 @@ function renderRunner() {
       '<button type="button" class="btn-primary runner-btn-start" id="runnerBtnStart">' + (isOver ? 'Ещё раз' : 'Бежать!') + '</button></div>';
     var av = document.getElementById('runnerStartAvatar');
     if (av) renderCharacterAvatar(av, getCharacterAppearance(), 120, { fullBody: true, emotion: isOver ? 'happy' : 'neutral' });
+    characterMotion.play(av, isOver ? (runnerEngine.score >= runnerEngine.bestScore && runnerEngine.score > 0 ? 'victory' : 'careful') : 'welcome');
     document.getElementById('runnerBtnStart').addEventListener('click', function () {
       runnerStart();
     });
@@ -2173,6 +2208,7 @@ async function confirmSell() {
   document.getElementById('sellSheet').classList.add('hidden');
   renderSell();
   renderHome();
+  characterMotion.react('sell', { anchor: '#sellMessage', text: 'Чек на месте. Учебные деньги снова на счёте.' });
   } finally {
     salePending = false;
     saleButton.disabled = false;
@@ -2461,6 +2497,7 @@ window.addEventListener('resize', function () {
 
 // ——— Character modal ———
 function openCharacterModal() {
+  characterMotion.clear();
   var app = getCharacterAppearance();
   document.getElementById('characterName').value = app.name;
   var optsEl = document.getElementById('characterOptions');
@@ -2482,6 +2519,9 @@ function openCharacterModal() {
       app[prop] = next;
       row.querySelector('.opt-value').textContent = arr[next];
       renderCharacterAvatar(document.getElementById('characterAvatarPreview'), app, 200, { fullBody: true });
+      var gesture = { hair: 'hair', shoes: 'shuffle', accessory: 'watch', face: 'correct', skinTone: 'welcome' }[key] || 'pose';
+      if (key === 'accessory') gesture = ['watch', 'hair', 'groove', 'careful'][next];
+      characterMotion.play(document.getElementById('characterAvatarPreview'), gesture);
     });
     optsEl.appendChild(row);
   });
@@ -2500,17 +2540,21 @@ function openCharacterModal() {
         row.querySelector('.opt-value').textContent = CHARACTER_OPTIONS[key][app[prop] || 0];
       });
       renderCharacterAvatar(document.getElementById('characterAvatarPreview'), app, 200, { fullBody: true, emotion: 'happy' });
+      characterMotion.play(document.getElementById('characterAvatarPreview'), 'pose');
     };
   });
   document.getElementById('characterModal').classList.remove('hidden');
+  characterMotion.play(document.getElementById('characterAvatarPreview'), 'welcome');
 }
 
 document.getElementById('profileCard').addEventListener('click', openCharacterModal);
 document.getElementById('btnHomeCharacter').addEventListener('click', openCharacterModal);
 document.getElementById('characterCancel').addEventListener('click', function () {
+  characterMotion.stop(document.getElementById('characterAvatarPreview'));
   document.getElementById('characterModal').classList.add('hidden');
 });
 document.getElementById('characterModalBackdrop').addEventListener('click', function () {
+  characterMotion.stop(document.getElementById('characterAvatarPreview'));
   document.getElementById('characterModal').classList.add('hidden');
 });
 document.getElementById('characterSave').addEventListener('click', function () {
@@ -2527,6 +2571,8 @@ document.getElementById('characterSave').addEventListener('click', function () {
   document.getElementById('characterModal').classList.add('hidden');
   renderProfile();
   renderHome();
+  characterMotion.play(document.getElementById('profileAvatar'), 'pose');
+  characterMotion.play(document.getElementById('homeCharacterAvatar'), 'pose');
 });
 
 // ——— Subscription modal ———
