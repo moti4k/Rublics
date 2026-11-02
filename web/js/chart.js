@@ -16,7 +16,7 @@ function destroyCharts() {
   }
 }
 
-function buildCharts(containerId, volumeContainerId, candles, scale, visibleRange) {
+function buildCharts(containerId, volumeContainerId, candles, scale, visibleRange, precision = 2) {
   destroyCharts();
   const container = document.getElementById(containerId);
   const volContainer = document.getElementById(volumeContainerId);
@@ -45,7 +45,7 @@ function buildCharts(containerId, volumeContainerId, candles, scale, visibleRang
   var chartOptions = {
     layout: {
       background: { type: 'solid', color: '#FFFFFF' },
-      textColor: '#64748B',
+      textColor: '#657266',
       fontSize: 11,
       fontFamily: fontStack
     },
@@ -56,16 +56,16 @@ function buildCharts(containerId, volumeContainerId, candles, scale, visibleRang
     crosshair: {
       mode: LW.CrosshairMode ? LW.CrosshairMode.Normal : 0,
       vertLine: {
-        color: 'rgba(82, 44, 128, 0.12)',
+        color: 'rgba(62, 91, 75, 0.12)',
         width: 1,
         style: LW.LineStyle.LargeDashed,
-        labelBackgroundColor: '#522C80'
+        labelBackgroundColor: '#3E5B4B'
       },
       horzLine: {
-        color: 'rgba(82, 44, 128, 0.15)',
+        color: 'rgba(62, 91, 75, 0.15)',
         width: 1,
         style: LW.LineStyle.Dashed,
-        labelBackgroundColor: '#522C80'
+        labelBackgroundColor: '#3E5B4B'
       }
     },
     width: container.clientWidth,
@@ -92,8 +92,9 @@ function buildCharts(containerId, volumeContainerId, candles, scale, visibleRang
 
   candleChart = LW.createChart(container, chartOptions);
   var series = candleChart.addCandlestickSeries({
-    upColor: '#16A34A',
-    downColor: '#DC2626',
+    priceFormat: { type: 'price', precision, minMove: Math.pow(10, -precision) },
+    upColor: '#2F8150',
+    downColor: '#C05242',
     borderUpColor: '#15803D',
     borderDownColor: '#B91C1C',
     wickUpColor: '#166534',
@@ -101,7 +102,7 @@ function buildCharts(containerId, volumeContainerId, candles, scale, visibleRang
     borderVisible: true,
     priceLineVisible: true,
     priceLineWidth: 1,
-    priceLineColor: 'rgba(82, 44, 128, 0.35)',
+    priceLineColor: 'rgba(62, 91, 75, 0.35)',
     priceLineStyle: LW.LineStyle.Dashed,
     lastValueVisible: true
   });
@@ -122,7 +123,7 @@ function buildCharts(containerId, volumeContainerId, candles, scale, visibleRang
     rightPriceScale: { scaleMargins: { top: 0.15, bottom: 0 }, borderVisible: false, minimumWidth: 64 }
   });
   var volSer = volumeChart.addHistogramSeries({
-    color: 'rgba(82, 44, 128, 0.38)',
+    color: 'rgba(62, 91, 75, 0.38)',
     priceScaleId: 'right',
     base: 0,
     priceFormat: { type: 'volume' }

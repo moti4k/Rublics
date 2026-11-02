@@ -58,6 +58,8 @@ function authMiddleware(req, res, next) {
   next();
 }
 
+app.use('/api/market', require('./market'));
+
 // POST /api/register — регистрация, возвращает user + token
 app.post('/api/register', (req, res) => {
   const email = (req.body.email || '').trim();

@@ -4,7 +4,8 @@ test.use({ reducedMotion: 'no-preference' });
 test.beforeEach(async ({ page }) => {
   page.motionErrors = [];
   page.on('pageerror', error => page.motionErrors.push(error.message));
-  await page.route('https://iss.moex.com/**', route => route.abort());
+  await page.addInitScript(() => { window.RUBLIKS_DEMO_MARKET = true; });
+  await page.route('**/api/market/**', route => route.abort());
   await page.route(/https:\/\/fonts\.(googleapis|gstatic)\.com\//, route => route.fulfill({ body: '', contentType: 'text/css' }));
   await page.goto('/', { waitUntil: 'domcontentloaded' });
   await page.locator('#btnOnboardingSkip').click();

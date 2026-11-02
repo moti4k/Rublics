@@ -9,7 +9,7 @@
   gap: 4px;
   padding: 10px 32px 10px 8px;
   box-sizing: border-box;
-  border: 1px solid #DED3E8;
+  border: 1px solid #EAF1E6;
   border-radius: 14px;
   background: #FFFDFA;
   box-shadow: 0 4px 16px #39254B12;
@@ -18,7 +18,7 @@
 }
 .character-reaction[hidden] { display: none; }
 .character-reaction-art { align-self: end; }
-.character-reaction-text { margin: 0; color: #583781; font: 600 13px/1.45 var(--font-sans); overflow-wrap: anywhere; }
+.character-reaction-text { margin: 0; color: #3E5B4B; font: 600 13px/1.45 var(--font-sans); overflow-wrap: anywhere; }
 .character-reaction-close {
   position: absolute;
   right: 0;
@@ -28,13 +28,13 @@
   border: 0;
   border-radius: 0 14px 0 8px;
   background: transparent;
-  color: #887891;
+  color: #617C69;
   font: 20px/1 var(--font-sans);
   cursor: pointer;
   pointer-events: auto;
 }
-.character-reaction-close:hover { background: #F3EDF8; color: #583781; }
-.character-reaction-close:focus-visible { outline: 2px solid #A58BBE; outline-offset: -3px; }
+.character-reaction-close:hover { background: #F3F6EE; color: #3E5B4B; }
+.character-reaction-close:focus-visible { outline: 2px solid #A4B7A5; outline-offset: -3px; }
 @media (prefers-reduced-motion: reduce) {
   .character-reaction, .character-art, .character-art * { animation: none !important; transition: none !important; }
 }

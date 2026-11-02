@@ -31,12 +31,13 @@
     explain: [[0, {}], [.25, { right: -50, head: 5 }], [.5, { right: -35, left: 22, head: -4 }], [.75, { right: -50, head: 5 }], [1, {}]],
     peek: [[0, {}], [.25, { x: 8, turn: 7, head: -10 }], [.55, { x: 10, turn: 8, head: -5, blink: .2 }], [.8, { x: 4, head: -7 }], [1, {}]],
     proud: [[0, {}], [.25, { left: -25, right: 28, sy: 1.02, head: -7 }], [.55, { left: -20, right: 22, head: 4 }], [.8, { head: -4 }], [1, {}]],
-    count: [[0, {}], [.2, { right: -110, head: -4 }], [.4, { right: -95, head: 4 }], [.6, { right: -110, head: -4 }], [.8, { right: -95, head: 4 }], [1, {}]]
+    count: [[0, {}], [.2, { right: -110, head: -4 }], [.4, { right: -95, head: 4 }], [.6, { right: -110, head: -4 }], [.8, { right: -95, head: 4 }], [1, {}]],
+    pull: [[0, {}], [.2, { x: -5, left: 55, turn: -5, head: 5 }], [.45, { x: 6, left: 75, right: -20, turn: 6 }], [.7, { x: 3, left: 35, head: -4 }], [1, {}]]
   };
   const durations = { welcome: 1350, buy: 1300, sell: 1300, correct: 1050, think: 1450,
     pose: 1200, hair: 1150, shuffle: 1200, watch: 1300, groove: 1350, victory: 1550,
     careful: 1200, relief: 1400, bump: 650, jump: 650, coin: 600,
-    point: 1200, tap: 1000, explain: 1450, peek: 1300, proud: 1400, count: 1300 };
+    point: 1200, tap: 1000, explain: 1450, peek: 1300, proud: 1400, count: 1300, pull: 1500 };
   let dock, dockAvatar, dockText, hideTimer, entrance, targetEffect;
   let anchor = null, previousFocus = null;
 
@@ -227,7 +228,7 @@
     const parts = rig(container);
     const letters = Array.from(String(text || '').trim());
     if (!parts || !letters.length || reduced.matches || document.hidden) { if (progress) progress(1); return; }
-    const state = { start: performance.now(), duration: Math.min(4200, Math.max(1100, letters.length * 30)), raf: null, progress };
+    const state = { start: performance.now(), duration: Math.min(3300, Math.max(850, letters.length * 22)), raf: null, progress };
     speaking.set(container, state);
     container.dataset.speaking = 'true';
     function tick(now) {

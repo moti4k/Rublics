@@ -1,13 +1,22 @@
-/* Rubliks Web - fetch stocks/candles (MOEX ISS or mock) */
+/* Exchange data never silently falls back to generated prices. */
 
 const MOEX_BASE = 'https://iss.moex.com/iss';
+const marketState = { status: 'loading', fetchedAt: null, quotedAt: null };
+const demoMarket = window.RUBLIKS_DEMO_MARKET === true;
+let lastRealStocks = [];
 
 async function fetchMoex(url) {
+  const upstream = new URL(url);
+  const match = upstream.pathname.match(/\/securities\/([^/]+)\/(candles|orderbook)\.json$/);
+  const resource = match ? match[2] : 'quotes';
+  const query = new URLSearchParams(upstream.search);
+  if (match) query.set('ticker', decodeURIComponent(match[1]));
+  url = '/api/market/' + resource + '?' + query;
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), 6000);
+  const timer = setTimeout(() => controller.abort(), 9000);
   try {
     const response = await fetch(url, { signal: controller.signal });
-    if (!response.ok) throw new Error('MOEX unavailable');
+    if (!response.ok) { const error = new Error('MOEX unavailable'); error.status = response.status; throw error; }
     return await response.json();
   }
   finally { clearTimeout(timer); }
@@ -38,10 +47,14 @@ function tickersForMoexRequest() {
       ? getMergedStocksHoldingsAllAccounts().map(h => h.ticker) : [];
     return Array.from(new Set(getMoexTickerListForSubscription().concat(owned)));
   }
-  return ['SBER', 'GAZP', 'LKOH', 'YNDX', 'GMKN', 'NVTK', 'TATN', 'ROSN', 'PLZL', 'MTSS', 'ALRS', 'CHMF', 'VTBR', 'AFLT', 'MGNT'];
+  return ['SBER', 'GAZP', 'LKOH', 'YDEX', 'GMKN', 'NVTK', 'TATN', 'ROSN', 'PLZL', 'MTSS', 'ALRS', 'CHMF', 'VTBR', 'AFLT', 'MGNT'];
 }
 
 async function fetchStocks() {
+  if (demoMarket) {
+    marketState.status = 'demo';
+    return mockStocksForTickers(tickersForMoexRequest());
+  }
   const list = tickersForMoexRequest().join(',');
   const url = `${MOEX_BASE}/engines/stock/markets/shares/boards/TQBR/securities.json?iss.meta=off&securities=${encodeURIComponent(list)}`;
   try {
@@ -55,6 +68,12 @@ async function fetchStocks() {
     const mktIdxId = mktCols.indexOf('secid');
     const mktIdxLast = mktCols.indexOf('last');
     const mktIdxOpen = mktCols.indexOf('open');
+    const idxPrev = cols.indexOf('prevprice');
+    const idxLots = cols.indexOf('lotsize');
+    const idxDecimals = cols.indexOf('decimals');
+    const idxChange = mktCols.indexOf('lasttoprevprice');
+    const idxTime = mktCols.indexOf('systime');
+    const securityById = Object.fromEntries(sec.map(row => [row[idxId], row]));
     const nameById = {};
     sec.forEach(row => {
       if (row[idxId] && row[idxName]) nameById[row[idxId]] = row[idxName];
@@ -62,35 +81,47 @@ async function fetchStocks() {
     const result = [];
     mkt.forEach(row => {
       const secid = row[mktIdxId];
-      const last = parseFloat(row[mktIdxLast]);
+      const security = securityById[secid] || [];
+      const traded = parseFloat(row[mktIdxLast]);
+      const previousClose = parseFloat(security[idxPrev]);
+      const last = traded > 0 ? traded : previousClose;
       const open = parseFloat(row[mktIdxOpen]) || last;
       if (!secid || !Number.isFinite(last) || last <= 0) return;
-      const change = open !== 0 ? ((last - open) / open) * 100 : 0;
+      const change = Number.isFinite(parseFloat(row[idxChange])) ? parseFloat(row[idxChange]) :
+        previousClose > 0 ? (last / previousClose - 1) * 100 : 0;
       result.push({
         ticker: secid,
         name: nameById[secid] || secid,
         price: last,
-        changePercent: change
+        changePercent: change,
+        previousClose: previousClose > 0 ? previousClose : open,
+        lotSize: Number(security[idxLots]) || 1,
+        decimals: Number.isInteger(security[idxDecimals]) ? Math.max(0, Math.min(6, security[idxDecimals])) : 2,
+        quotedAt: row[idxTime] || null,
+        previousSession: !(traded > 0),
+        stale: !!json._market?.stale
       });
     });
     if (result.length > 0) {
-      const missing = tickersForMoexRequest().filter(t => !result.some(s => s.ticker === t));
-      return result.concat(mockStocksForTickers(missing));
+      marketState.status = json._market?.stale ? 'stale' : 'ready';
+      marketState.fetchedAt = json._market?.fetchedAt || Date.now();
+      marketState.quotedAt = result.map(s => s.quotedAt).filter(Boolean).sort().at(-1);
+      const order = tickersForMoexRequest();
+      result.sort((a, b) => order.indexOf(a.ticker) - order.indexOf(b.ticker));
+      lastRealStocks = result;
+      return result;
     }
   } catch (_) {}
-  const tickers = tickersForMoexRequest();
-  if (typeof mockStocksForTickers === 'function') return mockStocksForTickers(tickers);
-  return DATA.defaultStocks.map(s => ({
-    ...s,
-    price: s.price * (0.98 + Math.random() * 0.04),
-    changePercent: (Math.random() - 0.5) * 4
-  }));
+  marketState.status = lastRealStocks.length ? 'stale' : 'unavailable';
+  return lastRealStocks.map(s => ({ ...s, stale: true }));
 }
 
 async function fetchCurrentPrice(ticker) {
-  const stocks = await fetchStocks();
-  const s = stocks.find(x => x.ticker === ticker);
-  return s ? s.price : null;
+  const result = await fetchStocks();
+  stocks = result;
+  updateQuotesRefreshLabel();
+  const s = result.find(x => x.ticker === ticker);
+  return s && !s.stale ? s.price : null;
 }
 
 function mockCandles(secid, count = 45, interval = 'day') {
@@ -118,8 +149,8 @@ function mockCandles(secid, count = 45, interval = 'day') {
 }
 
 function toMoexDate(ms) {
-  const d = new Date(ms);
-  return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+  const parts = Object.fromEntries(new Intl.DateTimeFormat('en', { timeZone: 'Europe/Moscow', year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(new Date(ms)).map(p => [p.type, p.value]));
+  return parts.year + '-' + parts.month + '-' + parts.day;
 }
 
 async function fetchCandles(secid, scale = 'days') {
@@ -130,8 +161,9 @@ async function fetchCandles(secid, scale = 'days') {
   const dayMs = 864e5;
   const till = toMoexDate(now);
   const stepMs = scale === 'hours' ? 36e5 : scale === 'minutes' ? 6e5 : dayMs;
-  const from = toMoexDate(now - limit * stepMs);
+  const from = toMoexDate(now - Math.max(limit * stepMs * 2, 7 * dayMs));
   const url = `${MOEX_BASE}/engines/stock/markets/shares/boards/TQBR/securities/${encodeURIComponent(secid)}/candles.json?interval=${scale === 'hours' ? 60 : scale === 'minutes' ? 10 : 24}&from=${from}&till=${till}&limit=${limit}`;
+  if (demoMarket) return mockCandles(secid, limit, interval);
   try {
     const json = await fetchMoex(url);
     const data = json.candles?.data || [];
@@ -155,18 +187,19 @@ async function fetchCandles(secid, scale = 'days') {
         volume: parseFloat(row[idxVol]) || 0
       };
     }));
-    if (parsed.length) return parsed.slice(-limit);
+    if (parsed.length) { const result = parsed.slice(-limit); result.stale = !!json._market?.stale; return result; }
   } catch (_) {}
-  return mockCandles(secid, limit, scale === 'hours' ? 'hour' : scale === 'minutes' ? 'minute' : 'day');
+  return [];
 }
 
 async function fetchOlderCandles(secid, scale, beforeTime, demoAnchor) {
   const limits = { allTime: 100, months: 90, days: 45, hours: 24, minutes: 36 };
   const limit = limits[scale] || 45;
-  const till = toMoexDate(beforeTime * 1000 - 864e5);
-  const from = toMoexDate(beforeTime * 1000 - (limit * 2 + 1) * 864e5);
+  const intraday = ['hours', 'minutes'].includes(scale);
+  const till = toMoexDate(beforeTime * 1000 - (intraday ? 0 : 864e5));
+  const from = toMoexDate(beforeTime * 1000 - (intraday ? 7 : limit * 2 + 1) * 864e5);
   const url = `${MOEX_BASE}/engines/stock/markets/shares/boards/TQBR/securities/${encodeURIComponent(secid)}/candles.json?interval=${scale === 'hours' ? 60 : scale === 'minutes' ? 10 : 24}&limit=${limit}&from=${from}&till=${till}`;
-  const isDemo = Number.isFinite(demoAnchor) && demoAnchor > 0;
+  const isDemo = demoMarket && Number.isFinite(demoAnchor) && demoAnchor > 0;
   try {
     if (isDemo) throw new Error('Demo history');
     const json = await fetchMoex(url);
@@ -235,6 +268,7 @@ async function fetchOrderBook(secid, depth, lastPriceFallback) {
     }
     return { bids, asks, mock: true };
   }
+  if (demoMarket) return mock(lastPriceFallback);
   try {
     const json = await fetchMoex(url);
     const ob = json.orderbook;
@@ -257,9 +291,8 @@ async function fetchOrderBook(secid, depth, lastPriceFallback) {
     });
     bids.sort((a, b) => b.price - a.price);
     asks.sort((a, b) => a.price - b.price);
-    if (bids.length || asks.length) return { bids, asks, mock: false };
-    throw new Error('empty');
-  } catch (_) {
-    return mock(lastPriceFallback);
+    return { bids, asks, mock: false, stale: !!json._market?.stale };
+  } catch (error) {
+    return { bids: [], asks: [], unavailable: true, accessRequired: error.status === 403 };
   }
 }

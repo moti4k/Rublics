@@ -1,0 +1,95 @@
+/* The same paper-and-ink system, with visual examples instead of document rows. */
+.home-learning-section { order: 1; }
+.holdings-section { order: 2; }
+.stocks-section { order: 3; }
+.home-top-section { order: 4; }
+.news-section-first { order: 5; }
+.home-shortcuts { order: 6; }
+.topics-section { order: 7; }
+.learning-card { display: flex; flex-direction: column; min-width: 0; padding: 18px; border: 2px solid #3E5B4B; border-radius: 18px; background: #FFFDF7; box-shadow: 0 3px 0 #3E5B4B; text-decoration: none; color: #263B32; transition: transform .14s ease, box-shadow .14s ease; }
+.learning-card:hover { transform: translateY(-2px); box-shadow: 0 5px 0 #3E5B4B; }
+.learning-card:active { transform: translateY(1px); box-shadow: 0 2px 0 #3E5B4B; }
+.lesson-card-top { display: flex; justify-content: space-between; align-items: center; gap: 10px; font-size: 11px; line-height: 1.4; font-weight: 650; margin-bottom: 14px; color: #5C705E; }
+.lesson-card-top > span:last-child { flex-shrink: 0; }
+.lesson-category { display: block; font-size: 11px; font-weight: 750; letter-spacing: .03em; color: #5C705E; }
+.learning-card h3 { font-size: 20px; line-height: 1.2; margin: 8px 0; letter-spacing: -.35px; }
+.learning-card p { font-size: 13px; line-height: 1.5; color: #657266; margin: 0 0 16px; }
+.lesson-card-action { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding-top: 12px; border-top: 1px solid #CAD7C2; font-size: 14px; font-weight: 750; margin-top: auto; }
+.lesson-card-action > span { width: 28px; height: 28px; display: grid; place-items: center; background: #FFDB64; border-radius: 50%; font-size: 20px; }
+.lesson-art { position: relative; display: grid; align-content: center; gap: 10px; min-height: 138px; padding: 18px; margin: 0 0 16px; border: 1px solid #BCD0AE; border-radius: 12px; background: #EAF1E4; color: #334B3D; overflow: hidden; }
+.lesson-art > span { font-size: 9px; font-weight: 750; letter-spacing: .06em; }
+.lesson-art > strong { font-size: clamp(23px, 4vw, 32px); letter-spacing: -1px; line-height: 1.1; }
+.lesson-art > small { font-size: 9px; line-height: 1.4; font-weight: 650; }
+.lesson-art--inflation, .lesson-art--goal { background: #FFF1C1; border-color: #D8BD6A; }
+.lesson-art--news { background: #F8E3D8; border-color: #D4AA92; }
+.lesson-art--growth { background: #E1EFF0; border-color: #A4C9CC; }
+.lesson-art--share::after { content: '1%'; position: absolute; right: 16px; top: 33px; display: grid; place-items: center; width: 65px; height: 65px; color: #3E5B4B; font-size: 24px; font-weight: 800; border: 3px solid #3E5B4B; border-radius: 50%; background: #FFDB64; transform: rotate(10deg); }
+.lesson-art--share > strong { max-width: calc(100% - 75px); font-size: 29px; }
+.learning-grid, #newsArticleList { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 20px; }
+.learning-route { display: grid; grid-template-columns: minmax(0,1fr) auto; gap: 14px; margin-bottom: 24px; padding: 18px; background: #EAF1E4; border: 1px solid #BCD0AE; border-radius: 16px; }
+.learning-route h3 { font-size: 20px; line-height: 1.25; margin: 8px 0; }
+.learning-route p { font-size: 13px; line-height: 1.6; color: #657266; margin: 0; }
+.learning-route > strong { font-size: 25px; white-space: nowrap; align-self: center; }
+.learning-route progress { grid-column: 1 / -1; width: 100%; height: 8px; accent-color: #3E5B4B; border: none; border-radius: 4px; overflow: hidden; }
+.learning-route progress::-webkit-progress-bar { background: #D4E0CE; }
+.learning-route progress::-webkit-progress-value { background: #3E5B4B; }
+.news-scroll { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 18px; border: none; }
+.news-scroll .lesson-art { min-height: 114px; }
+.news-scroll .learning-card h3 { font-size: 18px; }
+.article-view { padding: 0; border: 0; background: transparent; }
+.article-view h1 { max-width: 22ch; font-size: clamp(28px,5vw,40px); margin: 12px 0; letter-spacing: -1px; }
+.article-view .subtitle { font-size: 16px; color: #657266; margin: 0 0 20px; }
+.article-view > .lesson-art { min-height: 170px; }
+.lesson-scenario, .lesson-explainer, .lesson-takeaway, .lesson-check { margin: 20px 0; padding: 20px; border-radius: 16px; border: 1px solid #CAD7C2; background: #FFF; }
+.lesson-scenario { background: #E7F0F0; border-color: #B5CDCE; }
+.article-view .lesson-scenario p { font-size: 18px; line-height: 1.55; color: #263B32; margin: 8px 0 0; }
+.lesson-explainer h2, .lesson-check h2 { font-size: 21px; line-height: 1.35; margin: 0 0 14px; letter-spacing: -.3px; }
+.lesson-explainer p { font-size: 16px; line-height: 1.7; margin: 0 0 16px; }
+.lesson-explainer p:last-child { margin: 0; }
+.lesson-takeaway { background: #FFF1C1; border-color: #D8BD6A; transform: rotate(-.3deg); }
+.lesson-takeaway > span { font-size: 11px; font-weight: 750; color: #7B6536; }
+.lesson-takeaway p { font-size: 17px; font-weight: 650; line-height: 1.5; margin: 8px 0 0; }
+.lesson-check { border: 2px solid #3E5B4B; }
+.lesson-check h2 { margin-top: 10px; }
+.lesson-check-options { display: grid; gap: 12px; }
+.lesson-answer { display: flex; align-items: center; gap: 12px; width: 100%; padding: 14px; min-height: 60px; border: 1px solid #B7C5B1; border-radius: 12px; background: #F6F8F1; text-align: left; color: #263B32; font-size: 15px; line-height: 1.5; cursor: pointer; }
+.lesson-answer > span { display: grid; place-items: center; width: 28px; height: 28px; flex: 0 0 28px; background: #FFF; border-radius: 8px; font-weight: 750; }
+.lesson-answer:hover:not(:disabled) { background: #EAF1E4; border-color: #3E5B4B; }
+.lesson-answer.is-correct { border: 2px solid #477B52; background: #E3F0DF; opacity: 1; }
+.lesson-answer.is-wrong { border-color: #BF7359; background: #FAEBE0; }
+.lesson-feedback:not(:empty) { margin-top: 18px; padding-top: 16px; border-top: 1px solid #CAD7C2; }
+.lesson-feedback p { font-size: 15px; line-height: 1.6; margin: 8px 0; }
+.lesson-feedback:focus { outline: none; }
+.lesson-reward { display: inline-block; font-size: 12px; font-weight: 700; padding: 8px 10px; background: #FFF1C1; border-radius: 8px; color: #705C2C; }
+.lesson-next-actions { display: flex; flex-wrap: wrap; gap: 12px; }
+.lesson-next-actions > button { flex: 1 1 220px; line-height: 1.4; }
+.article-view .sources { font-size: 11px; line-height: 1.6; color: #657266; margin-top: 24px; }
+.expert-card { border: 1px solid #BCD0AE; background: #EAF1E4; border-radius: 16px; color: #3E5B4B; box-shadow: none; }
+@media (min-width: 1000px) {
+  .home-learning-section { grid-column: 2; grid-row: 1; }
+  .home-learning-section .section-row { margin-bottom: 12px; }
+  .home-learning-section .section-title { font-size: 15px; }
+  .home-learning-section .learning-card { padding: 16px; }
+  .home-learning-section .lesson-art { min-height: 112px; }
+  .home-top-section { grid-column: 2; grid-row: 2; }
+  .stocks-section { grid-column: 1; grid-row: 2; }
+  .holdings-section { grid-column: 1; grid-row: 3; }
+  .home-shortcuts { grid-column: 2; grid-row: 3; }
+  .news-section-first { grid-column: 1 / -1; grid-row: 4; }
+  .topics-section { grid-row: 5; }
+  #screen-article, #screen-news { max-width: 800px; margin-inline: auto; }
+}
+@media (max-width: 600px) {
+  .learning-grid, #newsArticleList { grid-template-columns: 1fr; gap: 18px; }
+  .news-scroll { grid-template-columns: 1fr; }
+  .learning-card { padding: 16px; }
+  .home-learning-section .section-title { font-size: 16px; }
+  .home-learning-section .section-row { align-items: center; gap: 8px; }
+  .home-learning-section .link-all { white-space: nowrap; font-size: 11px; }
+  .learning-route { gap: 12px; }
+  .learning-route h3 { font-size: 19px; }
+  .lesson-scenario, .lesson-explainer, .lesson-takeaway, .lesson-check { padding: 16px; }
+  .lesson-card-top { font-size: 10px; }
+  .lesson-next-actions > button { flex-basis: 100%; }
+}
+@media (prefers-reduced-motion: reduce) { .learning-card { transition: none; } .learning-card:hover, .lesson-takeaway { transform: none; } }

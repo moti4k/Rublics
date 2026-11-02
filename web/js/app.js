@@ -13,6 +13,9 @@ var currentSecTab = 'overview';
 var stocksSearchQuery = '';
 var analyticsPortfolioScope = 'all';
 var operationsAccountFilter = 'all';
+var articleBackScreen = 'home';
+var quoteMotionTimer = null;
+var orderbookRequestId = 0;
 
 const CRYPTO_PRICES = { BTC: 95000, ETH: 3500 };
 var MAIN_TAB_IDS = { home: true, game: true, education: true, friends: true, profile: true };
@@ -48,7 +51,7 @@ function refreshAfterSubscriptionChange() {
 function updateStocksSearchHint() {
   var el = document.getElementById('stocksSearchHint');
   if (!el) return;
-  var list = stocks.length ? stocks : DATA.defaultStocks;
+  var list = stocks;
   var n = list.length;
   var sub = getCurrentSubscriptionId();
   var subName = sub === 'free' ? 'Бесплатный' : sub === 'basic' ? 'Базовый' : 'Про';
@@ -91,13 +94,17 @@ function showScreen(id) {
     if (appEl) appEl.classList.remove('hide-tab-bar');
     document.querySelectorAll('.tab-item').forEach(function (t) {
       t.classList.toggle('active', t.getAttribute('data-tab') === id);
+      if (t.getAttribute('data-tab') === id) t.setAttribute('aria-current', 'page');
+      else t.removeAttribute('aria-current');
     });
   } else {
     if (appEl) appEl.classList.add('hide-tab-bar');
-    document.querySelectorAll('.tab-item').forEach(function (t) { t.classList.remove('active'); });
+    document.querySelectorAll('.tab-item').forEach(function (t) { t.classList.remove('active'); t.removeAttribute('aria-current'); });
   }
+  if (id === 'home') companion.enter(id);
   if (id === 'home') { loadStocks().then(function () { renderHome(); }); }
   else if (id === 'stocks') {
+    renderStocksFull();
     loadStocks().then(function () {
       updateStocksSearchHint();
       renderStocksFull();
@@ -106,6 +113,7 @@ function showScreen(id) {
   else if (id === 'game') renderGameList();
   else if (id === 'education') renderEducation();
   else if (id === 'friends') {
+    renderFriends();
     if (typeof authApi !== 'undefined' && authApi.isUsingBackend()) {
       loadStocks().then(function () {
         var totalBalance = typeof getAggregatedWealthRub === 'function'
@@ -121,10 +129,10 @@ function showScreen(id) {
       }).then(function () { return authApi.getFriends(); }).then(function (list) { setFriendsCache(list); renderFriends(); }).catch(function () { renderFriends(); });
     } else { loadStocks().then(function () { renderFriends(); }); }
   }
-  else if (id === 'analytics') { loadStocks().then(function () { renderAnalytics(); }); }
+  else if (id === 'analytics') { renderAnalytics(); loadStocks().then(function () { renderAnalytics(); }); }
   else if (id === 'operations') renderOperations();
   else if (id === 'profile') renderProfile();
-  else if (id === 'sell') { loadStocks().then(function () { renderSell(); }); }
+  else if (id === 'sell') { renderSell(); loadStocks().then(function () { renderSell(); }); }
   else if (id === 'victorina-entry') renderVictorinaEntry();
   else if (id === 'news') renderNewsList();
   else if (id === 'parent') renderParentReport();
@@ -134,7 +142,8 @@ function showScreen(id) {
     updateSecurityChrome();
     setTimeout(function () { loadChart(false); }, 40);
   }
-  companion.enter(id);
+  if (id !== 'home') companion.enter(id);
+  if (!matchMedia('(prefers-reduced-motion: reduce)').matches) el.animate([{ opacity: .65, transform: 'translateY(5px)' }, { opacity: 1, transform: 'translateY(0)' }], { duration: 180, easing: 'ease-out' });
 }
 
 function openSecurityScreen(ticker) {
@@ -148,6 +157,8 @@ function showSecurityTab(tab) {
   currentSecTab = tab || 'overview';
   document.querySelectorAll('.sec-tab').forEach(function (btn) {
     btn.classList.toggle('active', btn.getAttribute('data-sec-tab') === currentSecTab);
+    btn.setAttribute('aria-selected', String(btn.getAttribute('data-sec-tab') === currentSecTab));
+    btn.setAttribute('role', 'tab');
   });
   var map = { overview: 'secPanelOverview', orderbook: 'secPanelOrderbook', dividends: 'secPanelDividends', news: 'secPanelNews', events: 'secPanelEvents' };
   Object.keys(map).forEach(function (key) {
@@ -161,19 +172,27 @@ function showSecurityTab(tab) {
 }
 
 async function refreshSecurityOrderbook() {
+  const requestId = ++orderbookRequestId;
+  const ticker = currentChartSecid;
   var wrap = document.getElementById('secOrderbookTable');
   var hint = document.getElementById('secOrderbookHint');
   if (!wrap) return;
   if (hint) hint.textContent = 'Загрузка стакана…';
   wrap.innerHTML = '';
-  var list = stocks.length ? stocks : DATA.defaultStocks;
+  var list = stocks;
   var s = list.find(function (x) { return x.ticker === currentChartSecid; });
   var last = s ? s.price : null;
   var ob = typeof fetchOrderBook === 'function' ? await fetchOrderBook(currentChartSecid, 15, last) : { bids: [], asks: [], mock: true };
+  if (requestId !== orderbookRequestId || ticker !== currentChartSecid) return;
+  if (ob.accessRequired) {
+    hint.textContent = 'MOEX ограничивает доступ к полному стакану.';
+    wrap.innerHTML = '<section class="report-block"><h3>Что показывает стакан?</h3><p class="flow-text">Это ещё не исполненные заявки: покупатели называют свою цену, продавцы — свою. Лучшая цена покупки обычно ниже лучшей цены продажи. Разницу называют спредом.</p><p class="flow-text">В MVP доступны настоящие цены и свечи. Для живого стакана нужен отдельный доступ MOEX; вымышленных заявок здесь нет.</p></section>';
+    return;
+  }
   if (hint) {
     hint.textContent = ob.mock
-      ? 'Биржа не ответила — учебный стакан вокруг последней цены (в браузере данные MOEX иногда режутся CORS/сетью).'
-      : 'Стакан заявок TQBR (MOEX ISS), лучшие цены покупки и продажи.';
+      ? 'Тестовый стакан · вымышленные заявки.'
+      : ob.unavailable ? 'Стакан временно недоступен. Повтори загрузку вкладки.' : ob.stale ? 'Сохранённый стакан MOEX · данные устарели.' : !ob.bids.length && !ob.asks.length ? 'Сейчас нет открытых заявок. Торговая сессия может быть закрыта.' : 'Заявки MOEX · TQBR · задержка 15 минут. Количество в лотах.';
   }
   function rows(side, arr, cls) {
     var h = '<div class="orderbook-col ' + cls + '"><h4>' + (side === 'bid' ? 'Покупка' : 'Продажа') + '</h4><table class="orderbook-table"><thead><tr><th>Цена</th><th>Лоты</th></tr></thead><tbody>';
@@ -188,19 +207,8 @@ async function refreshSecurityOrderbook() {
 function refreshSecurityDividends() {
   var root = document.getElementById('secDividendsRoot');
   if (!root) return;
-  var dm = DATA.dividendMock || {};
-  var rows = dm[currentChartSecid] || dm.DEFAULT || [];
-  if (!rows.length) {
-    root.innerHTML = '<p class="flow-text">Нет учебных строк выплат для этого тикера.</p>';
-    return;
-  }
-  var thead = '<table class="dividend-table"><thead><tr><th>Отсечка</th><th>Выплата</th><th>₽ / акцию</th><th>Доходность (оценка)</th><th>Тип</th></tr></thead><tbody>';
-  var body = rows.map(function (r) {
-    var per = r.rubPerShare != null ? formatMoney(r.rubPerShare) : '—';
-    var yld = r.estYieldPct != null ? (escapeHtml(String(r.estYieldPct)) + '% г/г') : '—';
-    return '<tr><td>' + escapeHtml(r.exDate) + '</td><td>' + escapeHtml(r.payDate) + '</td><td>' + per + '</td><td>' + yld + '</td><td>' + escapeHtml(r.kind || '') + '</td></tr>';
-  }).join('');
-  root.innerHTML = '<p class="sec-panel-hint">Учебные примеры, не официальный календарь эмитента.</p>' + thead + body + '</tbody></table>';
+  root.innerHTML = '<section class="report-block"><h3>Часть прибыли акционерам</h3><p class="flow-text">Компания может направить часть прибыли на дивиденды. Размер и даты утверждаются отдельно; прошлые выплаты не гарантируют будущие.</p><p class="flow-text">В Рубликсе дивиденды пока не начисляются. Актуальный календарь проверяй в раскрытии информации эмитента.</p></section>';
+
 }
 
 function refreshSecurityNews() {
@@ -251,7 +259,7 @@ function refreshSecurityEvents() {
 function renderAnalytics() {
   var el = document.getElementById('analyticsRoot');
   if (!el) return;
-  var list = stocks.length ? stocks : DATA.defaultStocks;
+  var list = stocks;
   var prices = {};
   list.forEach(function (s) { prices[s.ticker] = s.price; });
   var portfolio = getPortfolio();
@@ -261,7 +269,7 @@ function renderAnalytics() {
   var agg = typeof getAggregatedWealthRub === 'function' ? getAggregatedWealthRub(list, CRYPTO_PRICES) : totalActive;
   var snaps = typeof getPortfolioSnapshots === 'function' ? getPortfolioSnapshots() : [];
   var useAll = analyticsPortfolioScope === 'all';
-  var stockCols = ['#522C80', '#E9110B', '#FFCA04', '#9276b2', '#1a7f37', '#0066cc'];
+  var stockCols = ['#3E5B4B', '#D74632', '#E3B640', '#55959A', '#92AC6D', '#C48155'];
   var stockIdx = 0;
   var pieSlices = [];
   var stockRows;
@@ -281,6 +289,11 @@ function renderAnalytics() {
       stockIdx += 1;
     }
   });
+  const missing = stockRows.filter(h => !(prices[h.ticker] > 0));
+  if (missing.length) {
+    el.innerHTML = '<section class="report-block"><h3>Ждём котировки для оценки</h3><p class="flow-text">Акции на месте, но без цены нельзя честно посчитать доли и стоимость.</p><p class="flow-text">Не хватает цен: ' + missing.map(h => escapeHtml(h.ticker)).join(', ') + '.</p><p class="flow-text">Свободно на активном счёте: ' + formatMoney(bal) + ' ₽. Обнови котировки, чтобы продолжить.</p><button type="button" class="btn-secondary" data-refresh-market>Обновить котировки</button></section>';
+    return;
+  }
   var cashV;
   var cryptoV;
   var futV;
@@ -300,20 +313,17 @@ function renderAnalytics() {
     pieSlices.push({ label: 'Криптовалюта', v: cryptoV, color: '#F59E0B' });
   }
   if (futV > 0.005) {
-    pieSlices.push({ label: 'Фьючерсы (оценка)', v: futV, color: '#6366F1' });
+    pieSlices.push({ label: 'Фьючерсы (оценка)', v: futV, color: '#55959A' });
   }
   var totalPie = pieSlices.reduce(function (s, p) { return s + p.v; }, 0);
-  var gradient = 'conic-gradient(#e2e8f0 0% 100%)';
-  if (totalPie > 0.005 && pieSlices.length) {
-    var accPct = 0;
-    var segs = pieSlices.map(function (p) {
-      var pct = (p.v / totalPie) * 100;
-      var start = accPct;
-      accPct += pct;
-      return p.color + ' ' + start.toFixed(3) + '% ' + accPct.toFixed(3) + '%';
-    });
-    gradient = 'conic-gradient(' + segs.join(', ') + ')';
-  }
+  let consumed = 0;
+  const sectors = pieSlices.map(p => {
+    const percentage = totalPie > 0 ? p.v / totalPie * 100 : 0;
+    const segment = '<circle cx="50" cy="50" r="40" fill="none" stroke="' + p.color + '" stroke-width="20" pathLength="100" stroke-dasharray="' + percentage + ' ' + (100 - percentage) + '" stroke-dashoffset="' + (-consumed) + '" transform="rotate(-90 50 50)"/>';
+    consumed += percentage;
+    return segment;
+  }).join('');
+  const pie = '<svg viewBox="0 0 100 100" role="img" aria-label="Структура портфеля. Суммы и доли перечислены под диаграммой."><circle cx="50" cy="50" r="40" fill="none" stroke="#E3EADF" stroke-width="20"/>' + sectors + '</svg>';
   var snapHtml = snaps.slice(0, 7).map(function (s) {
     return '<li>' + escapeHtml(s.day) + ': ' + formatMoney(s.value) + ' ₽</li>';
   }).join('');
@@ -330,7 +340,7 @@ function renderAnalytics() {
   el.innerHTML = freeBanner + scopeBar + (useAll ? summaryAll : summaryActive) +
     (!useAll ? '<p class="flow-text subtle">Всего по счетам: <strong>' + formatMoney(agg) + ' ₽</strong> (для друзей и рейтинга).</p>' : '') +
     '<h3 class="subsection-title">' + pieTitle + '</h3>' +
-    '<div class="analytics-pie" style="background:' + gradient + '" title="Доли в портфеле"></div>' +
+    '<div class="analytics-pie">' + pie + '</div>' +
     (pieSlices.length
       ? '<ul class="flow-text analytics-pie-legend" style="font-size:13px">' + pieSlices.map(function (p) {
         var pct = totalPie > 0 ? Math.round((p.v / totalPie) * 1000) / 10 : 0;
@@ -340,7 +350,7 @@ function renderAnalytics() {
     '<h3 class="subsection-title">Снимки оценки (раз в день)</h3>' +
     (snapHtml ? '<ul class="analytics-snap-list">' + snapHtml + '</ul>' : '<p class="flow-text subtle">Появятся после посещений главной.</p>') +
     roadmap +
-    '<div class="report-block" style="margin-top:20px"><h3>Подсказка</h3><p class="flow-text">Следи за долей одной бумаги: если она занимает почти весь портфель, вспомни про диверсификацию — это учебный сценарий, не рекомендация.</p></div>';
+    '';
   el.querySelectorAll('.analytics-scope-btn').forEach(function (btn) {
     btn.addEventListener('click', function () {
       analyticsPortfolioScope = btn.getAttribute('data-analytics-scope') === 'all' ? 'all' : 'active';
@@ -381,12 +391,11 @@ function renderOperations() {
     : '';
   el.innerHTML =
     '<h3 class="subsection-title">События</h3>' +
-    '<p class="flow-text subtle">По ТЗ: покупки, продажи, выплаты и др. В демо — сделки по акциям.</p>' +
+    '<p class="flow-text subtle">Твои учебные покупки и продажи по счетам.</p>' +
     '<label class="label" for="operationsAccountFilter">Счёт</label>' +
     '<select id="operationsAccountFilter" class="input operations-account-filter">' + accOpts + '</select>' +
     block + subNote +
-    '<h3 class="subsection-title" style="margin-top:24px">Активные заявки</h3>' +
-    '<p class="flow-text">В демо доступны только рыночные сделки. Лимитные и отложенные заявки — в следующих версиях.</p>';
+    '<p class="flow-text subtle">Сделки исполняются сразу по доступной котировке MOEX. Отложенных заявок нет.</p>';
   var sel = document.getElementById('operationsAccountFilter');
   if (sel) {
     sel.value = operationsAccountFilter;
@@ -399,7 +408,7 @@ function renderOperations() {
 
 function updateSecurityChrome() {
   var t = currentChartSecid;
-  var list = stocks.length ? stocks : DATA.defaultStocks;
+  var list = stocks;
   var s = list.find(function (x) { return x.ticker === t; });
   var nameEl = document.getElementById('chartSecurityName');
   var tickEl = document.getElementById('chartSecurityTicker');
@@ -408,7 +417,7 @@ function updateSecurityChrome() {
   var p = s ? stockDayChangePercent(s) : 0;
   var chEl = document.getElementById('chartDayChange');
   if (chEl) {
-    chEl.textContent = s ? ('Изменение за день: ' + (p >= 0 ? '+' : '') + p.toFixed(2) + '% к открытию') : '—';
+    chEl.textContent = s ? ('Изменение за день: ' + (p >= 0 ? '+' : '') + p.toFixed(2) + '% к прошлому закрытию') : '—';
     chEl.classList.remove('up', 'down');
     if (p > 0.001) chEl.classList.add('up');
     else if (p < -0.001) chEl.classList.add('down');
@@ -423,11 +432,9 @@ function updateSecurityChrome() {
     favB.setAttribute('aria-pressed', on ? 'true' : 'false');
   }
   var metList = document.getElementById('securityMetricsList');
-  if (metList && typeof getSecurityMetricsLines === 'function') {
-    var lines = getSecurityMetricsLines(t);
-    metList.innerHTML = lines.map(function (row) {
-      return '<li><span class="security-metric-label">' + escapeHtml(row.label) + '</span><span class="security-metric-value">' + escapeHtml(row.value) + '</span></li>';
-    }).join('');
+  if (metList) {
+    const rows = s ? [ ['Режим торгов', 'MOEX · TQBR'], ['Акций в биржевом лоте', String(s.lotSize || 1)], ['Цена', formatMoney(s.price) + ' ₽'], ['Время биржи', (s.quotedAt || 'Нет метки времени') + (s.quotedAt ? ' МСК' : '')] ] : [['Котировки', 'Временно недоступны']];
+    metList.innerHTML = rows.map(row => '<li><span class="security-metric-label">' + escapeHtml(row[0]) + '</span><span class="security-metric-value">' + escapeHtml(row[1]) + '</span></li>').join('');
   }
 }
 
@@ -609,7 +616,12 @@ function onVictorinaAnswer(choiceIndex, fromTimeout) {
   var ex = document.getElementById('victorinaExplain');
   if (ex && q.explanation) {
     var prefix = ok ? 'Верно. ' : (fromTimeout ? 'Время вышло. ' : 'Не угадал. ');
-    ex.textContent = prefix + q.explanation;
+    ex.textContent = prefix + 'Правильный ответ: ' + ['Рост', 'Падение', 'Без изменений'][correct] + '.';
+    ex.dataset.explanation = q.explanation;
+    const fallback = document.createElement('p');
+    fallback.className = 'buddy-hidden-explanation';
+    fallback.textContent = q.explanation;
+    ex.append(fallback);
     ex.classList.remove('hidden');
   }
   document.getElementById('btnVictorinaPause').disabled = true;
@@ -617,7 +629,7 @@ function onVictorinaAnswer(choiceIndex, fromTimeout) {
   document.getElementById('btnVictorinaNext').textContent = victorinaIdx === 9 ? 'Результат →' : 'Дальше →';
   document.getElementById('victorinaScore').textContent = 'Верно: ' + victorinaCorrect + ' · цель: 7 из 10';
   companion.say(document.getElementById('buddy-victorina-game'),
-    (ok ? 'Связь найдена! ' : fromTimeout ? 'Время вышло. ' : 'Разберёмся. ') + q.explanation,
+    q.explanation,
     ok ? 'correct' : 'explain', '#victorinaText');
   document.getElementById('btnVictorinaNext').focus({ preventScroll: true });
 }
@@ -696,21 +708,13 @@ function finishVictorinaRound() {
 }
 
 function renderNewsList() {
-  var list = DATA.newsArticles || [];
-  document.getElementById('newsArticleList').innerHTML = list.length
-    ? list.map(function (a) {
-      var prev = (a.subtitle || (a.paragraphs && a.paragraphs[0]) || '').trim();
-      if (prev.length > 160) prev = prev.slice(0, 157) + '…';
-      return '<article class="news-list-card"><a href="#" class="article-list-item" data-article-id="' + escapeHtml(a.id) + '">' +
-        '<h3>' + escapeHtml(a.title) + '</h3>' +
-        '<p class="news-list-preview">' + escapeHtml(prev) + '</p>' +
-        '<p class="meta">' + escapeHtml(a.date) + ' · ~' + (a.readMin || 3) + ' мин чтения</p>' +
-        '<span class="news-read-btn">Читать</span></a></article>';
-    }).join('')
-    : '<p class="placeholder" style="padding:16px">Материалы скоро появятся.</p>';
+  document.getElementById('newsArticleList').innerHTML = DATA.newsArticles.map((a, i) => learning.card(a, i)).join('');
 }
 
 function renderArticle(articleId) {
+  const current = document.querySelector('.screen.active')?.id.replace('screen-', '');
+  if (current && current !== 'article') articleBackScreen = current;
+  if (learning.article(articleId)) return;
   var list = DATA.newsArticles || [];
   var a = list.find(function (x) { return x.id === articleId; });
   var el = document.getElementById('articleView');
@@ -728,15 +732,15 @@ function renderParentReport() {
   var vw = stats.videosWatched || 0;
   var lvl = getInvestorLevel();
   var lvlRu = lvl === 'pro' ? 'Юный профи' : (lvl === 'explorer' ? 'Исследователь' : 'Новичок');
-  var list = stocks.length ? stocks : DATA.defaultStocks;
+  var list = stocks;
   var portfolio = getPortfolio();
   var prices = Object.fromEntries(list.map(s => [s.ticker, s.price]));
   var assets = totalStocksValue(portfolio, prices) + totalCryptoValue(portfolio, CRYPTO_PRICES) + (portfolio.futuresValueRub || 0);
   var total = getBalance() + assets;
-  var html = '<div class="report-block"><h3>Обучение</h3><div class="report-row"><span>Просмотрено уроков (метка)</span><span>' + vw + '</span></div>' +
+  var html = '<div class="report-block"><h3>Обучение</h3><div class="report-row"><span>Пройдено миссий</span><span>' + vw + '</span></div>' +
     '<div class="report-row"><span>Верных ответов в квизах (всего)</span><span>' + qc + '</span></div>' +
     '<div class="report-row"><span>Стиль инвестора</span><span>' + escapeHtml(lvlRu) + '</span></div>' +
-    '<div class="report-row"><span>XP викторины (локально)</span><span>' + getVictorinaXp() + '</span></div>' +
+    '<div class="report-row"><span>Опыт (локально)</span><span>' + getVictorinaXp() + '</span></div>' +
     '<div class="report-row"><span>«Рубликсы»</span><span>' + getRublixBalance() + '</span></div></div>' +
     '<div class="report-block"><h3>Портфель (демо)</h3><div class="report-row"><span>Оценка всего</span><span>' + formatMoney(total) + ' ₽</span></div>' +
     '<div class="report-row"><span>В активах</span><span>' + formatMoney(assets) + ' ₽</span></div></div>' +
@@ -763,7 +767,6 @@ function finishEnterApp() {
     return;
   }
   showScreen('home');
-  loadStocks();
 }
 
 function renderHomeStories() {
@@ -779,7 +782,7 @@ function renderHomeFavorites() {
   var el = document.getElementById('homeFavoritesList');
   if (!el) return;
   var fav = typeof getFavoriteTickers === 'function' ? getFavoriteTickers() : [];
-  var list = stocks.length ? stocks : DATA.defaultStocks;
+  var list = stocks;
   var cntEl = document.getElementById('favCountStocks');
   if (cntEl) cntEl.textContent = String(fav.length);
   if (!fav.length) {
@@ -791,14 +794,21 @@ function renderHomeFavorites() {
     var p = s ? stockDayChangePercent(s) : 0;
     var cl = p >= 0 ? 'up' : 'down';
     var name = s ? s.name : t;
-    var priceStr = s ? (s.price >= 1000 ? s.price.toFixed(0) : s.price.toFixed(2)) : '—';
+    var priceStr = s ? formatMarketPrice(s.price) : '—';
     return '<a href="#" class="home-fav-row" data-ticker="' + escapeHtml(t) + '"><span class="home-fav-letter" aria-hidden="true">' + escapeHtml(t.charAt(0)) + '</span><span class="home-fav-info"><strong>' + escapeHtml(t) + '</strong><span>' + escapeHtml(name) + '</span></span><span class="home-fav-meta"><span class="home-fav-price">' + priceStr + ' ₽</span><span class="home-fav-chg chg ' + cl + '">' + (p >= 0 ? '+' : '') + p.toFixed(2) + '%</span></span></a>';
   }).join('');
 }
 
 function renderHome() {
-  renderCharacterAvatar(document.getElementById('homeCharacterAvatar'), getCharacterAppearance(), 104, { fullBody: true });
-  characterMotion.greet(document.getElementById('homeCharacterAvatar'));
+  learning.home();
+  const homeAvatar = document.getElementById('homeCharacterAvatar');
+  const appearance = getCharacterAppearance();
+  const signature = JSON.stringify(appearance);
+  if (homeAvatar.dataset.appearance !== signature || !homeAvatar.querySelector('svg')) {
+    renderCharacterAvatar(homeAvatar, appearance, 104, { fullBody: true });
+    homeAvatar.dataset.appearance = signature;
+  }
+  if (!companion.isHidden()) characterMotion.greet(document.getElementById('homeCharacterAvatar'));
   companion.home();
   var subMain = document.getElementById('homeSubMain');
   var subFav = document.getElementById('homeSubFav');
@@ -830,20 +840,21 @@ function renderHome() {
   var balEl = document.getElementById('balanceAmount');
   if (balEl) balEl.textContent = formatMoney(balance);
 
-  const list = stocks.length ? stocks : DATA.defaultStocks;
+  const list = stocks;
   const portfolio = getPortfolio();
   const prices = Object.fromEntries(list.map(s => [s.ticker, s.price]));
   const totalStocks = totalStocksValue(portfolio, prices);
   const totalCrypto = totalCryptoValue(portfolio, CRYPTO_PRICES);
   const assetsTotal = totalStocks + totalCrypto + (portfolio.futuresValueRub || 0);
   const portfolioTotalRub = balance + assetsTotal;
-  if (typeof recordPortfolioSnapshot === 'function') recordPortfolioSnapshot(portfolioTotalRub);
+  const valuationComplete = portfolio.stocks.every(h => prices[h.ticker] > 0);
+  if (valuationComplete && marketState.status !== 'stale' && typeof recordPortfolioSnapshot === 'function') recordPortfolioSnapshot(portfolioTotalRub);
   const dayCh = portfolioDayChangeRub(portfolio, list);
   var homeTotal = document.getElementById('homePortfolioTotal');
   var homeDay = document.getElementById('homePortfolioDay');
   var chipLab = document.getElementById('portfolioChipLabel');
   if (chipLab && typeof getActivePortfolioAccountName === 'function') chipLab.textContent = getActivePortfolioAccountName();
-  if (homeTotal) homeTotal.textContent = formatMoney(portfolioTotalRub) + ' ₽';
+  if (homeTotal) homeTotal.textContent = valuationComplete ? formatMoney(portfolioTotalRub) + ' ₽' : 'Нет оценки';
 
   var pillDay = document.getElementById('pillPortfolioDay');
   var pillAll = document.getElementById('pillPortfolioAll');
@@ -853,7 +864,7 @@ function renderHome() {
   if (homeDay) {
     homeDay.classList.remove('up', 'down');
     if (portfolioPillMode === 'day') {
-      var chStr = (dayCh >= 0 ? '+' : '') + formatMoney(dayCh) + ' ₽ за день (оценка по котировкам)';
+      var chStr = (dayCh >= 0 ? '+' : '') + formatMoney(dayCh) + ' ₽ за сессию';
       homeDay.textContent = chStr;
       if (dayCh > 0.01) homeDay.classList.add('up');
       else if (dayCh < -0.01) homeDay.classList.add('down');
@@ -867,10 +878,12 @@ function renderHome() {
         if (diff > 0.01) homeDay.classList.add('up');
         else if (diff < -0.01) homeDay.classList.add('down');
       } else {
-        homeDay.textContent = 'За всё время: переключись на «За день» или открой Аналитику — снимки растут при заходе на главную.';
+        homeDay.textContent = 'История начнётся с сегодняшнего дня.';
       }
     }
   }
+
+  if (!valuationComplete && homeDay) homeDay.textContent = 'Часть цен недоступна. Количество акций сохранено.';
 
   const topEl = document.getElementById('homeTopMovers');
   if (topEl) {
@@ -885,32 +898,21 @@ function renderHome() {
     }).join('') || '<p class="placeholder">Нет данных по бумагам</p>';
   }
 
-  const articles = DATA.newsArticles || [];
   const newsEl = document.getElementById('newsCarousel');
-  if (newsEl) {
-    if (articles.length) {
-      newsEl.innerHTML = articles.slice(0, 4).map(function (a) {
-        return '<a href="#" class="news-card" data-article-id="' + escapeHtml(a.id) + '"><h3>' + escapeHtml(a.title) + '</h3><p>' + escapeHtml(a.subtitle || '') + '</p><span class="link-all">Читать материал →</span></a>';
-      }).join('');
-    } else {
-      newsEl.innerHTML = (DATA.news || []).map(function (n) {
-        return '<article class="news-card"><h3>' + escapeHtml(n.title) + '</h3><p>' + escapeHtml(n.snippet) + '</p></article>';
-      }).join('');
-    }
-  }
+  if (newsEl) newsEl.innerHTML = DATA.newsArticles.filter(a => a.id !== learning.next().id).slice(0, 2).map(a => learning.card(a, DATA.newsArticles.indexOf(a))).join('');
 
   const listEl = document.getElementById('stocksList');
   if (listEl) {
     listEl.innerHTML = list.slice(0, 6).map(s => {
       const ch = stockDayChangePercent(s);
       const changeClass = ch >= 0 ? 'up' : 'down';
-      const priceStr = s.price >= 1000 ? s.price.toFixed(0) : s.price.toFixed(2);
+      const priceStr = formatMarketPrice(s.price);
       return `<a href="#" class="stock-chip" data-ticker="${escapeHtml(s.ticker)}">
       <span class="stock-identity"><span class="ticker">${escapeHtml(s.ticker)}</span><span class="stock-company">${escapeHtml(s.name || s.ticker)}</span></span>
       <span class="price">${priceStr} ₽</span>
       <span class="change ${changeClass}">${ch >= 0 ? '+' : ''}${ch.toFixed(1)}%</span>
     </a>`;
-    }).join('');
+    }).join('') || '<p class="placeholder">' + (marketState.status === 'loading' ? 'Напарник собирает цены с биржи…' : 'Цены пока недоступны. Игры и обучение работают — Нажми стрелку рядом с источником цен.') + '</p>';
   }
 
   var topicsEl = document.getElementById('topicsGrid');
@@ -929,13 +931,14 @@ function renderHome() {
   const holdSection = document.getElementById('holdingsSection');
   const holdList = document.getElementById('holdingsList');
   if (!holdSection || !holdList) return;
-  if (total <= 0) {
+  if (total <= 0 && !portfolio.stocks.length) {
     holdSection.classList.add('hidden');
   } else {
     holdSection.classList.remove('hidden');
     let html = '';
     portfolio.stocks.forEach(h => {
       const val = (h.quantity || 0) * (prices[h.ticker] || 0);
+      if (val <= 0) html += '<div class="holdings-row"><strong>' + escapeHtml(h.ticker) + '</strong><span>' + h.quantity + ' шт. · цена недоступна</span></div>';
       if (val > 0) {
         const st = list.find(function (x) { return x.ticker === h.ticker; });
         const dp = st ? stockDayChangePercent(st) : 0;
@@ -992,9 +995,23 @@ function sortTopMoversList(arr) {
 function updateQuotesRefreshLabel() {
   var el = document.getElementById('quotesRefreshLabel');
   if (!el) return;
-  var d = new Date();
-  const demo = stocks.some(function (s) { return s.mock; });
-  el.textContent = (demo ? 'Демо-котировки · ' : 'MOEX · ') + d.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
+  const labels = { loading: 'Загружаем котировки…', unavailable: 'MOEX недоступна · повторить',
+    stale: 'MOEX · сохранённые цены · повторить', demo: 'Тестовые котировки' };
+  const time = marketState.quotedAt ? marketState.quotedAt.slice(8, 10) + '.' + marketState.quotedAt.slice(5, 7) + ' · ' + marketState.quotedAt.slice(11, 16) : '';
+  el.textContent = labels[marketState.status] || 'MOEX · 15 мин';
+  el.title = time ? 'Время биржи: ' + time + ' МСК. Бесплатные данные с задержкой 15 минут.' : el.textContent;
+  document.querySelectorAll('.market-source-summary').forEach(label => { label.textContent = el.textContent; label.title = el.title; });
+  el.dataset.status = marketState.status;
+  const wasLoading = document.body.classList.contains('market-loading');
+  document.body.classList.toggle('market-loading', marketState.status === 'loading');
+  if (marketState.status === 'loading' && !wasLoading) {
+    clearTimeout(quoteMotionTimer);
+    quoteMotionTimer = setTimeout(() => {
+      if (!companion.isHidden() && marketState.status === 'loading') characterMotion.play(document.getElementById('homeCharacterAvatar'), 'pull');
+    }, 300);
+  } else if (marketState.status !== 'loading') clearTimeout(quoteMotionTimer);
+  const retry = document.getElementById('btnRefreshQuotes');
+  if (retry) retry.disabled = marketState.status === 'loading';
 }
 
 function stopStocksPolling() {
@@ -1018,7 +1035,7 @@ function startStocksPolling() {
       if (sid === 'screen-sell') renderSell();
       if (sid === 'screen-chart') {
         var s = stocks.find(function (x) { return x.ticker === currentChartSecid; });
-        if (s) document.getElementById('chartPrice').textContent = formatMoney(s.price);
+        if (s) document.getElementById('chartPrice').textContent = formatMarketPrice(s.price);
         updateSecurityChrome();
       }
     }).catch(function () {});
@@ -1027,7 +1044,6 @@ function startStocksPolling() {
 
 async function loadStocks() {
   if (!stocks.length) {
-    stocks = mockStocksForTickers(tickersForMoexRequest());
     renderHome();
     updateQuotesRefreshLabel();
   }
@@ -1050,7 +1066,7 @@ document.addEventListener('visibilitychange', function () {
     if (active && active.id === 'screen-stocks') renderStocksFull();
     if (active && active.id === 'screen-chart') {
       var s = stocks.find(function (x) { return x.ticker === currentChartSecid; });
-      if (s) document.getElementById('chartPrice').textContent = formatMoney(s.price);
+      if (s) document.getElementById('chartPrice').textContent = formatMarketPrice(s.price);
       updateSecurityChrome();
     }
   }).catch(function () {});
@@ -1093,23 +1109,26 @@ async function loadChart(appendOlder) {
   if (requestId !== chartRequestId) return;
   chartCandles = normalizeCandles(appendOlder ? fetched.concat(chartCandles) : fetched);
   chartCandles.isDemo = appendOlder ? wasDemo : !!fetched.isDemo;
+  chartCandles.stale = !!fetched.stale;
   if (loadingEl) loadingEl.classList.add('hidden');
   const added = chartCandles.length - previousLength;
   const restoredRange = previousRange ? { from: previousRange.from + added, to: previousRange.to + added } : null;
-  const lastPrice = buildCharts('candlestickChart', 'volumeChart', chartCandles, chartScale, restoredRange);
+  const quote = stocks.find(s => s.ticker === currentChartSecid);
+  const lastPrice = buildCharts('candlestickChart', 'volumeChart', chartCandles, chartScale, restoredRange, quote?.decimals ?? 2);
   const status = document.getElementById('chartDataStatus');
-  if (status) status.textContent = !chartCandles.length ? 'Нет данных для графика.' :
-    (chartCandles.isDemo ? 'Учебный график · сеть недоступна' : 'Свечи MOEX · исторические данные') +
+  if (status) status.textContent = !chartCandles.length ? 'График пока недоступен. Выбери другой период или нажми «Обновить график».' :
+    (chartCandles.isDemo ? 'Учебный график · тестовые данные' : 'Свечи MOEX · исторические данные' + (chartCandles.stale ? ' · сохранённая копия' : '')) +
     (appendOlder && !fetched.length ? '. Более ранних данных нет или сеть недоступна.' : '');
-  document.getElementById('chartPrice').textContent = lastPrice != null ? formatMoney(lastPrice) : '—';
+  document.getElementById('chartPrice').textContent = quote ? formatMarketPrice(quote.price) : lastPrice != null ? formatMarketPrice(lastPrice) : '—';
   document.getElementById('btnBuyTicker').textContent = currentChartSecid;
+  document.getElementById('btnBuyStock').disabled = !stocks.some(s => s.ticker === currentChartSecid && !s.stale);
   const loadOlderBtn = document.getElementById('btnLoadOlder');
   if (loadOlderBtn) loadOlderBtn.classList.toggle('hidden', !chartCandles.length);
   updateSecurityChrome();
 }
 
 function renderStocksFull() {
-  const list = stocks.length ? stocks : DATA.defaultStocks;
+  const list = stocks;
   var q = (stocksSearchQuery || '').trim().toLowerCase();
   var filtered = q
     ? list.filter(function (s) {
@@ -1129,7 +1148,7 @@ function renderStocksFull() {
     return;
   }
   el.innerHTML = sorted.map(s => {
-    const priceStr = s.price >= 1000 ? s.price.toFixed(0) : s.price.toFixed(2);
+    const priceStr = formatMarketPrice(s.price);
     const ch = stockDayChangePercent(s);
     return `<a href="#" class="stock-row" data-ticker="${escapeHtml(s.ticker)}">
       <span><strong>${escapeHtml(s.ticker)}</strong> ${escapeHtml(s.name)}</span>
@@ -1158,7 +1177,7 @@ function renderPurchase() {
   }
   const select = document.getElementById('purchaseTicker');
   select.innerHTML = stocks.map(s =>
-    `<option value="${escapeHtml(s.ticker)}" ${s.ticker === currentChartSecid ? 'selected' : ''}>${escapeHtml(s.ticker)} — ${s.price >= 1000 ? s.price.toFixed(0) : s.price.toFixed(2)} ₽</option>`
+    `<option value="${escapeHtml(s.ticker)}" ${s.ticker === currentChartSecid ? 'selected' : ''}>${escapeHtml(s.ticker)} — ${formatMarketPrice(s.price)} ₽</option>`
   ).join('');
   updatePurchaseTotal();
 }
@@ -1191,10 +1210,19 @@ async function doPurchase() {
     return;
   }
   const accountId = loadBundleFromStorage().activeId;
-  const price = await fetchCurrentPrice(ticker) || (stocks.find(s => s.ticker === ticker)?.price) || 0;
+  msgEl.textContent = 'Проверяем котировку…'; msgEl.className = 'message';
+  const displayedPrice = stocks.find(s => s.ticker === ticker)?.price;
+  const price = await fetchCurrentPrice(ticker) || 0;
   if (price <= 0) { msgEl.textContent = 'Не удалось получить цену'; msgEl.className = 'message error'; return; }
-  const cost = price * qty;
+  if (displayedPrice && Math.abs(displayedPrice - price) > .005) {
+    renderPurchase();
+    msgEl.textContent = 'Цена обновилась. Проверь новую сумму и подтверди покупку ещё раз.';
+    msgEl.className = 'message';
+    return;
+  }
+  const cost = Math.round(price * qty * 100) / 100;
   if (!Number.isFinite(cost) || loadBundleFromStorage().activeId !== accountId) return;
+  if (cost < 0.01) { msgEl.textContent = 'Минимальная сумма сделки — 0,01 ₽'; msgEl.className = 'message error'; return; }
   const balance = getBalance();
   if (cost > balance) {
     msgEl.textContent = 'Недостаточно средств на выбранном счёте'; msgEl.className = 'message error';
@@ -1204,7 +1232,7 @@ async function doPurchase() {
   setBalance(balance - cost);
   const portfolio = getPortfolio();
   const i = portfolio.stocks.findIndex(h => h.ticker === ticker);
-  if (i >= 0) portfolio.stocks[i].quantity = (portfolio.stocks[i].quantity || 0) + qty;
+  if (i >= 0) portfolio.stocks[i].quantity = Math.round(((portfolio.stocks[i].quantity || 0) + qty) * 1e8) / 1e8;
   else portfolio.stocks.push({ ticker, quantity: qty });
   setPortfolio(portfolio);
   if (typeof appendOperationLog === 'function') {
@@ -1223,7 +1251,7 @@ async function doPurchase() {
   renderHome();
   renderPurchase();
   characterMotion.react('buy', { anchor: '#purchaseMessage', text: 'Бумага в портфеле! Место в кармане нашлось.' });
-  setTimeout(() => { msgEl.textContent = ''; }, 2000);
+
   } finally {
     purchasePending = false;
     purchaseButton.disabled = false;
@@ -1611,8 +1639,8 @@ var bOp = document.getElementById('btnHomeOperations');
 if (bOp) bOp.addEventListener('click', function () { showScreen('operations'); });
 var bAn = document.getElementById('btnHomeAnalytics');
 if (bAn) bAn.addEventListener('click', function () { showScreen('analytics'); });
-var bEarn = document.getElementById('btnHomeEarn');
-if (bEarn) bEarn.addEventListener('click', function () { showScreen('education'); });
+var bBuy = document.getElementById('btnHomeBuy');
+if (bBuy) bBuy.addEventListener('click', function () { showScreen('stocks'); });
 
 function openPortfolioAccountsModal() {
   var modal = document.getElementById('portfolioAccountsModal');
@@ -1731,7 +1759,6 @@ if (btnHdrHelp) {
 }
 
 document.getElementById('btnBuyStock').addEventListener('click', async () => {
-  await loadStocks();
   renderPurchase();
   showScreen('purchase');
 });
@@ -1798,7 +1825,7 @@ function renderQuestionGame(mode) {
       '</h3><p class="quiz-result">' + state.correct + ' из ' + items.length + ' верных</p><p class="practice-reward" role="status">' + practiceRewardText(state.reward) + '</p><button type="button" class="btn-primary" id="' + mode + 'Again">Ещё раунд</button>' +
       '<button type="button" class="btn-text" id="' + mode + 'Close">Закрыть</button></div></div>';
     companion.attach(document.getElementById(guideId), {
-      avatarId: mode + 'AvatarWrap', mood: 'victory',
+      avatarId: mode + 'AvatarWrap', mood: 'victory', essential: true,
       text: state.correct === items.length ? 'Чистый раунд! А теперь попробуй объяснить один из ответов своими словами.' : 'Раунд в кармане. Ошибки показали, какие темы можно подтянуть — это тоже прогресс.',
       target: '.quiz-result'
     });
@@ -1819,7 +1846,7 @@ function renderQuestionGame(mode) {
   }).join('');
   var explanation = state.showExplanation
     ? '<div class="quiz-explanation-block"><p class="quiz-feedback ' + (correct ? 'correct' : 'wrong') + '">' +
-      (correct ? 'Верно! Связь найдена.' : 'Правильный ответ: ' + escapeHtml(item.options[item.correctAnswerIndex])) + '</p></div>' : '';
+      (correct ? 'Верно! Связь найдена.' : 'Правильный ответ: ' + escapeHtml(item.options[item.correctAnswerIndex])) + '</p><p class="buddy-hidden-explanation">' + escapeHtml(item.explanation) + '</p></div>' : '';
   container.innerHTML = '<div class="quiz-play-area"><p class="quiz-progress"><span class="quiz-progress-track"><span class="quiz-progress-fill" style="width:' +
     Math.round(state.index / items.length * 100) + '%"></span></span>' + (isQuiz ? 'Вопрос ' : 'Ситуация ') + (state.index + 1) + ' / ' + items.length +
     ' · Верно: ' + state.correct + '</p><section class="quiz-hero" id="' + guideId + '"></section>' +
@@ -1827,10 +1854,11 @@ function renderQuestionGame(mode) {
     explanation + '<div class="quiz-options">' + options + '</div>' +
     (state.showExplanation ? '<button type="button" class="btn-primary" id="' + mode + 'Next">' + (state.index + 1 >= items.length ? 'Результат' : 'Дальше') + ' →</button>' : '') + '</div>';
   companion.attach(document.getElementById(guideId), {
+    essential: state.showExplanation,
     avatarId: mode + 'AvatarWrap',
     mood: state.showExplanation ? (correct ? 'correct' : 'think') : 'point',
-    text: state.showExplanation ? (correct ? 'Верно. ' : 'Разберёмся. ') + item.explanation :
-      (isQuiz ? 'Как новость изменит ситуацию? Давай разбираться.' : 'Что бы ты сделал? Выбери вариант — разберём последствия вместе.'),
+    text: state.showExplanation ? item.explanation :
+      'Выбери вариант. Потом разберём логику вместе.',
     target: '#' + mode + 'Question',
     tips: isQuiz ? ['Спроси себя: что изменилось для компании или инвестора? Цена не растёт просто потому, что новость звучит громко.'] :
       ['Сначала оцени риск и свои цели. Обещание быстрой прибыли само по себе не делает решение хорошим.']
@@ -2148,20 +2176,20 @@ function renderSell() {
   let hasAny = false;
   (portfolio.stocks || []).forEach(h => {
     const val = (h.quantity || 0) * (prices[h.ticker] || 0);
-    if (val > 0) {
+    if (h.quantity > 0) {
       hasAny = true;
       stockList.innerHTML += `<div class="sell-row">
         <div class="sell-row-info">
           <span class="ticker">${escapeHtml(h.ticker)}</span>
-          <span class="meta">${formatQty(h.quantity || 0)} шт. · ${formatMoney(val)} ₽</span>
+          <span class="meta">${formatQty(h.quantity || 0)} шт. · ${val > 0 ? formatMoney(val) + ' ₽' : 'цена недоступна'}</span>
         </div>
-        <button type="button" class="btn-sell-small" data-sell-stock="${escapeHtml(h.ticker)}" data-qty="${h.quantity}">Продать</button>
+        <button type="button" class="btn-sell-small" ${!prices[h.ticker] || stocks.find(s => s.ticker === h.ticker)?.stale ? 'disabled' : ''} data-sell-stock="${escapeHtml(h.ticker)}" data-qty="${h.quantity}">Продать</button>
       </div>`;
     }
   });
   (portfolio.crypto || []).forEach(h => {
     const val = (h.amount || 0) * (CRYPTO_PRICES[h.symbol] || 0);
-    if (val > 0) {
+    if (h.amount > 0) {
       hasAny = true;
       cryptoList.innerHTML += `<div class="sell-row">
         <div class="sell-row-info">
@@ -2176,13 +2204,14 @@ function renderSell() {
 }
 
 function formatQty(v) {
-  return v >= 1 ? v.toFixed(0) : v.toFixed(4);
+  return new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 6 }).format(v);
 }
 function formatCrypto(v) {
   return v.toFixed(6);
 }
 
 function openSellSheet(type, tickerOrSymbol, qtyOrAmount) {
+  document.getElementById('sellSheetMessage').textContent = '';
   sellSheetHolding = { type, tickerOrSymbol, qtyOrAmount };
   document.getElementById('sellSheetTitle').textContent = type === 'stock' ? 'Продать ' + tickerOrSymbol : 'Продать ' + tickerOrSymbol;
   const input = document.getElementById('sellSheetQty');
@@ -2195,7 +2224,9 @@ function openSellSheet(type, tickerOrSymbol, qtyOrAmount) {
 function updateSellSheetTotal() {
   if (!sellSheetHolding) return;
   const input = document.getElementById('sellSheetQty');
-  const val = parseFloat((input.value || '0').replace(',', '.')) || 0;
+  const parsed = Number((input.value || '0').replace(',', '.'));
+  const val = Number.isFinite(parsed) && parsed > 0 ? parsed : 0;
+  document.getElementById('sellSheetMessage').textContent = '';
   const priceVal = sellSheetHolding.type === 'stock'
     ? (stocks.find(s => s.ticker === sellSheetHolding.tickerOrSymbol)?.price ?? 0)
     : (CRYPTO_PRICES[sellSheetHolding.tickerOrSymbol] ?? 0);
@@ -2216,25 +2247,33 @@ async function confirmSell() {
   const val = Number((input.value || '0').replace(',', '.'));
   const max = parseFloat(sellSheetHolding.qtyOrAmount) || 0;
   if (!Number.isFinite(val) || val <= 0 || val > max) {
-    document.getElementById('sellSheetTotal').textContent = 'Укажи количество от 0 до ' + max;
+    document.getElementById('sellSheetMessage').textContent = 'Укажи количество больше 0 и не больше ' + formatQty(max);
     return;
   }
   const portfolio = getPortfolio();
   if (sellSheetHolding.type === 'stock') {
-    const price = await fetchCurrentPrice(sellSheetHolding.tickerOrSymbol) ?? (stocks.find(s => s.ticker === sellSheetHolding.tickerOrSymbol)?.price) ?? 0;
+    const displayedPrice = stocks.find(s => s.ticker === sellSheetHolding.tickerOrSymbol)?.price;
+    const price = await fetchCurrentPrice(sellSheetHolding.tickerOrSymbol) ?? 0;
     if (!sellSheetHolding || sellSheetHolding.tickerOrSymbol !== holding.tickerOrSymbol || loadBundleFromStorage().activeId !== accountId) return;
     const owned = portfolio.stocks.find(h => h.ticker === holding.tickerOrSymbol);
     if (!owned || owned.quantity < val) return;
     if (price <= 0) {
+      document.getElementById('sellSheetMessage').textContent = 'Биржа не ответила. Продажа не выполнена — попробуй ещё раз.';
       document.getElementById('sellMessage').textContent = 'Не удалось получить актуальную цену';
       document.getElementById('sellMessage').className = 'message error';
       return;
     }
-    const rub = val * price;
+    if (displayedPrice && Math.abs(displayedPrice - price) > .005) {
+      updateSellSheetTotal();
+      document.getElementById('sellSheetMessage').textContent = 'Цена обновилась. Проверь сумму и подтверди продажу ещё раз.';
+      return;
+    }
+    const rub = Math.round(val * price * 100) / 100;
+    if (rub < 0.01) { document.getElementById('sellSheetMessage').textContent = 'Минимальная сумма сделки — 0,01 ₽'; return; }
     setBalance(getBalance() + rub);
     const i = portfolio.stocks.findIndex(h => h.ticker === sellSheetHolding.tickerOrSymbol);
     if (i >= 0) {
-      portfolio.stocks[i].quantity -= val;
+      portfolio.stocks[i].quantity = Math.round((portfolio.stocks[i].quantity - val) * 1e8) / 1e8;
       if (portfolio.stocks[i].quantity <= 0) portfolio.stocks.splice(i, 1);
     }
     document.getElementById('sellMessage').textContent = 'Успех! Продано ' + formatQty(val) + ' ' + sellSheetHolding.tickerOrSymbol + ' по ' + formatMoney(price) + ' ₽ на ' + formatMoney(rub) + ' ₽.';
@@ -2243,7 +2282,8 @@ async function confirmSell() {
     }
   } else {
     const price = CRYPTO_PRICES[sellSheetHolding.tickerOrSymbol] ?? 0;
-    const rub = val * price;
+    const rub = Math.round(val * price * 100) / 100;
+    if (rub < 0.01) { document.getElementById('sellSheetMessage').textContent = 'Минимальная сумма сделки — 0,01 ₽'; return; }
     setBalance(getBalance() + rub);
     const i = portfolio.crypto.findIndex(h => h.symbol === sellSheetHolding.tickerOrSymbol);
     if (i >= 0) {
@@ -2315,7 +2355,7 @@ function renderTopicDetail(topicId) {
   });
   html += '</section>';
   if (details.facts && details.facts.length > 0) {
-    html += '<section class="topic-facts"><p class="topic-facts-title">💡 Интересные факты</p>';
+    html += '<section class="topic-facts"><p class="topic-facts-title">Полезно знать</p>';
     details.facts.forEach(function (f) {
       html += '<p class="topic-fact">• ' + escapeHtml(f) + '</p>';
     });
@@ -2325,7 +2365,7 @@ function renderTopicDetail(topicId) {
     html += '<button type="button" class="btn-primary topic-btn-buy" data-topic-action="buy" data-topic-id="' + escapeHtml(topicId) + '">🛒 ' + escapeHtml(details.buyTitle) + '</button>';
   }
   if (details.showStocksLink) {
-    html += '<button type="button" class="btn-topic-outline" id="topicShowStocks">📋 Смотреть акции</button>';
+    html += '<button type="button" class="btn-topic-outline" id="topicShowStocks">Посмотреть акции →</button>';
   }
   document.getElementById('topicDetailContent').innerHTML = html;
   var buyBtn = document.querySelector('.topic-btn-buy[data-topic-id="' + topicId + '"]');
@@ -2355,10 +2395,7 @@ document.getElementById('btnBackTopic').addEventListener('click', function () {
 
 // ——— Education, Friends, Profile ———
 function renderEducation() {
-  document.getElementById('educationLessons').innerHTML = DATA.lessons.map(function (l, i) {
-    return '<a href="#" class="lesson-row lesson-link" data-lesson-index="' + i + '">' +
-      '<h4>' + escapeHtml(l.title) + '</h4><span class="duration">' + escapeHtml(l.duration) + '</span><p>' + escapeHtml(l.shortText) + '</p></a>';
-  }).join('');
+  learning.library();
 }
 
 function renderFriends() {
@@ -2391,7 +2428,7 @@ function renderFriends() {
 function renderProfile() {
   var user = getCurrentUser();
   document.getElementById('profileName').textContent = getProfileName();
-  document.getElementById('profileSubtitle').textContent = (user && user.email) ? user.email : 'Рубликс';
+  document.getElementById('profileSubtitle').textContent = (typeof isGuestOnlyMode === 'function' && isGuestOnlyMode()) ? 'Прогресс в этом браузере' : (user && user.email) ? user.email : 'Рубликс';
   var lvl = getInvestorLevel();
   var lvlRu = lvl === 'pro' ? 'Юный профи' : (lvl === 'explorer' ? 'Исследователь' : 'Новичок');
   var invEl = document.getElementById('profileInvestorLevel');
@@ -2400,13 +2437,22 @@ function renderProfile() {
   var plans = getSubscriptionPlans();
   var plan = plans.find(function (p) { return p.id === planId; }) || plans[0];
   document.getElementById('profileSubscription').textContent = plan.name;
-  document.getElementById('profileSubscriptionPeriod').textContent = plan.price + ' / ' + plan.period;
+  document.getElementById('profileSubscriptionPeriod').textContent = 'Демо · без оплаты';
   document.getElementById('profileSubscriptionBar').style.background = plan.color;
   renderCharacterAvatar(document.getElementById('profileAvatar'), getCharacterAppearance(), 128, { fullBody: true });
   var progressStats = getUserStats();
-  document.querySelectorAll('.achievement-badge').forEach(function (badge, index) {
-    badge.dataset.done = String(index === 0 ? progressStats.videosWatched > 0 : index === 1 ? progressStats.quizCorrectCount > 0 : progressStats.quizCorrectCount >= 50);
-  });
+  const completedLessons = learning.completed();
+  document.getElementById('profileWallet').innerHTML = '<div><strong>' + getVictorinaXp() + '<span> XP</span></strong><span>Опыт</span></div><div><strong>' + getRublixBalance() + '</strong><span>Рубликсы</span></div><div><strong>' + completedLessons + '<span> / 6</span></strong><span>Миссии</span></div>';
+  const badges = [
+    { name: 'Есть база', count: completedLessons, target: 1, unit: 'миссия', color: '#FFF1C1', art: '<path d="M18 29q14-7 30 1 16-8 30-1v43q-15-6-30 1-15-7-30-1z" fill="#FFFDF7"/><path d="M48 30v43M27 40h12m-12 9h12m17-9h13m-13 9h13"/><path d="M57 26v17l5-4 5 4V25" fill="#E3B640"/>' },
+    { name: 'В точку', count: progressStats.quizCorrectCount, target: 10, unit: 'ответов', color: '#E2EFF0', art: '<path d="m33 58-7 25 17-7 6 8 8-27" fill="#D9B15B"/><path d="m53 56 6 27 9-9 12 5-9-28" fill="#D9B15B"/><circle cx="48" cy="41" r="25" fill="#FFFDF7"/><path d="m35 41 9 9 17-19" stroke-width="5"/>' },
+    { name: 'Весь маршрут', count: completedLessons, target: 6, unit: 'миссий', color: '#F8E3D8', art: '<path d="m15 24 22-6 23 8 21-7v54l-21 7-23-8-22 6z" fill="#FFFDF7"/><path d="M37 18v54m23-46v54" opacity=".5"/><path d="m24 61 8-15 15 9 16-15" stroke-dasharray="4 5"/><path d="M64 22v21m0-21 12 5-12 5" fill="#D74632"/><circle cx="24" cy="61" r="3" fill="#3E5B4B"/>' }
+  ];
+  document.getElementById('profileAchievements').innerHTML = badges.map(badge => {
+    const count = Math.min(badge.count, badge.target);
+    const done = count >= badge.target;
+    return '<div class="achievement-badge" data-done="' + done + '"><svg viewBox="0 0 96 96" class="achievement-icon" aria-hidden="true" fill="none" stroke="#3E5B4B" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"><path d="M48 5 85 20v43L48 91 11 63V20z" fill="' + badge.color + '" stroke="none"/>' + badge.art + '</svg><strong>' + badge.name + '</strong><span class="achievement-progress">' + (done ? '✓ Получено' : count + ' / ' + badge.target + ' ' + badge.unit) + '</span></div>';
+  }).join('');
 }
 
 
@@ -2430,7 +2476,7 @@ document.getElementById('btnAddFriend').addEventListener('click', function () {
 document.getElementById('friendsRanking').addEventListener('change', renderFriends);
 
 document.body.addEventListener('click', e => {
-  const newsCard = e.target.closest('.news-card');
+  const newsCard = e.target.closest('[data-article-id]');
   if (newsCard && newsCard.getAttribute('data-article-id')) {
     e.preventDefault();
     renderArticle(newsCard.getAttribute('data-article-id'));
@@ -2820,5 +2866,25 @@ document.getElementById('linkParentReport').addEventListener('click', function (
   showScreen('parent');
 });
 document.getElementById('btnBackNews').addEventListener('click', function () { showScreen('home'); });
-document.getElementById('btnBackArticle').addEventListener('click', function () { showScreen('news'); });
+document.getElementById('btnBackArticle').addEventListener('click', function () { showScreen(articleBackScreen); });
 document.getElementById('btnBackParent').addEventListener('click', function () { showScreen('home'); });
+
+// A visible recovery action also refreshes whichever market screen is open.
+document.getElementById('btnRefreshQuotes').addEventListener('click', async function () {
+  marketState.status = 'loading';
+  updateQuotesRefreshLabel();
+  await loadStocks();
+  const id = document.querySelector('.screen.active')?.id;
+  if (id === 'screen-stocks') renderStocksFull();
+  if (id === 'screen-chart') { updateSecurityChrome(); await loadChart(false); }
+  if (id === 'screen-sell') renderSell();
+  if (id === 'screen-analytics') renderAnalytics();
+});
+
+document.getElementById('btnRetryChart').addEventListener('click', async () => { await loadStocks(); await loadChart(false); });
+
+document.querySelectorAll('.btn-back:not([aria-label])').forEach(button => button.setAttribute('aria-label', 'Назад'));
+
+document.addEventListener('click', event => {
+  if (event.target.closest('[data-refresh-market]')) document.getElementById('btnRefreshQuotes').click();
+});

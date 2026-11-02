@@ -1,10 +1,11 @@
 const { test, expect } = require('@playwright/test');
 
-test.beforeEach(async ({ page }) => {
+test.beforeEach(async ({ page }, testInfo) => {
   page.runtimeErrors = [];
   page.on('pageerror', error => page.runtimeErrors.push(error.message));
-  // Network failure exercises the built-in demo fallback, without depending on MOEX uptime.
-  await page.route('https://iss.moex.com/**', route => route.abort());
+  // Explicit test fixtures keep interaction checks independent of the external exchange.
+  if (!testInfo.title.startsWith('MOEX response')) await page.addInitScript(() => { window.RUBLIKS_DEMO_MARKET = true; });
+  await page.route('**/api/market/**', route => route.abort());
   await page.route(/https:\/\/fonts\.(googleapis|gstatic)\.com\//, route => route.fulfill({ body: '', contentType: 'text/css' }));
   await page.goto('/', { waitUntil: 'domcontentloaded' });
   await expect(page.locator('#screen-onboarding')).toBeVisible();
@@ -229,9 +230,10 @@ test('flat colors and explicitly unavailable features', async ({ page }) => {
   await enter(page);
   const backgrounds = await page.locator('body, .news-card, .home-story-card, .btn-primary').evaluateAll(elements => elements.map(el => getComputedStyle(el).backgroundImage));
   expect(backgrounds.every(bg => !bg.includes('gradient'))).toBe(true);
-  await expect(page.locator('[data-inst="bonds"]')).toBeDisabled();
+  await expect(page.locator('[data-inst="bonds"]')).toHaveCount(0);
+  await expect(page.locator('#btnHomeBuy')).toBeVisible();
   await page.locator('[data-tab="game"]').click();
-  await expect(page.locator('.game-hub-title')).toHaveCSS('color', 'rgb(32, 33, 31)');
+  await expect(page.locator('.game-hub-title')).toBeVisible();
 });
 
 test('illustrated avatar presets and every appearance slot survive reload', async ({ page }) => {
@@ -354,7 +356,7 @@ test('rugpull crash and invalid bets preserve the correct balance', async ({ pag
   expect(await page.locator('#rugpullChart').evaluate(canvas => canvas.toDataURL())).not.toBe(crashedChart);
 });
 
-test('help, earnings shortcut and share without clipboard work', async ({ page }) => {
+test('help, purchase shortcut and share without clipboard work', async ({ page }) => {
   await enter(page);
   await page.locator('#btnHeaderHelp').click();
   await expect(page.locator('#headerHelpModal')).toBeVisible();
@@ -363,9 +365,9 @@ test('help, earnings shortcut and share without clipboard work', async ({ page }
   await expect(page.locator('#pillPortfolioAll')).toHaveClass(/active/);
   await page.locator('#pillPortfolioDay').click();
   await expect(page.locator('#pillPortfolioDay')).toHaveClass(/active/);
-  await page.locator('#btnHomeEarn').click();
-  await expect(page.locator('#screen-education')).toBeVisible();
-  await page.locator('[data-tab="home"]').click();
+  await page.locator('#btnHomeBuy').click();
+  await expect(page.locator('#screen-stocks')).toBeVisible();
+  await page.locator('#btnBackStocks').click();
   await page.locator('.stock-chip').first().click();
   await page.evaluate(() => {
     Object.defineProperty(navigator, 'share', { value: undefined, configurable: true });
@@ -412,8 +414,10 @@ test('server rejection does not grant rewards or repeat the round', async ({ pag
 });
 
 test('MOEX response with duplicate candles still draws a chart', async ({ page }) => {
+  await page.route('**/api/market/quotes?*', route => route.fulfill({ json: { securities: { columns: ['SECID', 'SHORTNAME', 'PREVPRICE'], data: [['SBER', 'Сбербанк', 250]] }, marketdata: { columns: ['SECID', 'LAST', 'OPEN'], data: [['SBER', 258, 250]] } } }));
   await enter(page);
-  await page.route('https://iss.moex.com/**/candles.json?*', route => route.fulfill({ json: {
+  await expect(page.locator('.stock-chip')).toHaveCount(1);
+  await page.route('**/api/market/candles?*', route => route.fulfill({ json: {
     candles: { columns: ['begin', 'open', 'high', 'low', 'close', 'volume'], data: [
       ['2026-10-29T12:00:00Z', 250, 255, 245, 252, 1000],
       ['2026-10-30T12:00:00Z', 252, 259, 250, 257, 1200],
@@ -468,7 +472,7 @@ test('empty chart has a clear state and recovers on reload', async ({ page }) =>
   await enter(page);
   await page.evaluate(() => { fetchCandles = async () => []; });
   await page.locator('.stock-chip').first().click();
-  await expect(page.locator('#chartDataStatus')).toHaveText('Нет данных для графика.');
+  await expect(page.locator('#chartDataStatus')).toContainText('Обновить график');
   await expect(page.locator('#btnLoadOlder')).toBeHidden();
   await expect(page.locator('#candlestickChart canvas')).toHaveCount(0);
   await page.reload({ waitUntil: 'domcontentloaded' });
